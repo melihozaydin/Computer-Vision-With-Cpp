@@ -11,6 +11,7 @@
           Build OpenCV yourself with MinGW, or try a third-party MinGW binary distribution of OpenCV. Web searches for "opencv mingw" turn up some possibilities.
           Use the MSVC compiler for your project. Microsoft offers some free versions of its tools. Just be sure to install the optional older toolsets so that you have access to the VC 15 tools to match OpenCV.
       ```
+      - https://medium.com/csmadeeasy/opencv-c-installation-on-windows-with-mingw-c0fc1499f39
   - https://code.visualstudio.com/docs/cpp/config-msvc 
     - The CXX compiler identification is unknown
       ```

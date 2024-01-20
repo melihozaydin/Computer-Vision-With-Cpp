@@ -5,8 +5,8 @@ include(CTest)
 enable_testing()
 # Added to fix error
 #set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Dev/opencv")
-set(OpenCV_DIR "C:/Dev/opencv/build/")
-#set(OpenCV_INCLUDE_DIRS "C:/Dev/opencv/build/include")
+#set(OpenCV_DIR "C:/Dev/opencv/")
+set(OpenCV_INCLUDE_DIRS "C:/Dev/opencv/lib")
 
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
