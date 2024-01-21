@@ -63,6 +63,14 @@
     7.  Once the configuration is complete, open the Command Palette again and search for and select "CMake: Build" to build the project.
     8.  Wait for the build process to finish.
 
+- After the build is done:
+  - Save the "build/directory/install" folder to not have to compile again.
+  - Also you can move it to a seperate folder and get rid of everything else
+  - Add "install_dir/x64/vc17/" bin and lib folder paths to "PATH" in enviroment variables
+  - After that cmake should auto find it with : find_package( OpenCV REQUIRED )
+  - Note: If vscode was open prior to installation cmake may not find it.
+    - Restart vscode to resolve.
+
 After the build process is complete, you can test OpenCV with GPU support by running a sample program. Here's an example program to print GPU device information:
 
 ```cpp
