@@ -5,10 +5,10 @@ using namespace cv;
 int main(int argc, char** argv )
 {
     Mat image;
-    image = imread("./lenna.png");
+    image = imread("E:/Work/Projects/Computer Vision/Computer Vision With C++/02-Installing OpenCV C++/lenna.png");
     if ( !image.data )
     {
-        printf("No image data \n");
+        printf("No image data /n");
         return -1;
     }
     
