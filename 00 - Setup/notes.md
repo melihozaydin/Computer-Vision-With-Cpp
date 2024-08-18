@@ -3,9 +3,11 @@
 1. Downloading the source files from OpenCV's GitHub repository, including the OpenCV contrib module.
    1. <https://github.com/opencv/opencv>
    2. <https://github.com/opencv/opencv_contrib>
+
 2. Installing Visual Studio Code with the necessary development tools for C++.
    - https://visualstudio.microsoft.com/downloads/
    - Select Desktop dev with c++
+  
 3. Installing CUDA and cuDNN from NVIDIA's website.
    https://developer.nvidia.com/cuda-downloads
    https://developer.nvidia.com/rdp/cudnn-download
@@ -21,6 +23,7 @@
    9.  Copy the extracted files to the corresponding CUDA installation directory. Typically, you need to copy the contents of the `bin`, `include`, and `lib` directories to the corresponding directories in your CUDA installation.
 
 4.  Instal CMake, which will be used to build the source files.
+
 5.  Configuring OpenCV with GPU support in CMake.
     1. Open CMake GUI.
     2. Specify the source files location by browsing and selecting the folder where the OpenCV source files are downloaded and extracted.
@@ -34,6 +37,7 @@
       - WITH_CUDA
       - opencv_world
       - ENABLE_FAST_MATH
+
     9.  Set the value of "OPENCV_EXTRA_MODULES_PATH" to the location of the OpenCV contrib module for GPU support that you downloaded.
     10. Click on the "Configure" button again to update the configuration.
     11. Check CUDA_FAST_MATH
