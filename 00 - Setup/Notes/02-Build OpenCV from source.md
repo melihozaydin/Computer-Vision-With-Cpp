@@ -1,5 +1,8 @@
+
+https://www.simonwenkel.com/notes/software_libraries/opencv/compiling-opencv.html#the-problem
+
+
 - Complier installation:
-  
   - https://code.visualstudio.com/docs/cpp/config-mingw
     - "Found OpenCV Windows Pack but it has no binaries compatible with your configuration
       ```

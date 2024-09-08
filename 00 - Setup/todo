@@ -1,0 +1,19 @@
+# Setup dockerfiles fo0r easy setup
+- https://github.com/lanzani/opencv-cuda-docker
+- https://hub.docker.com/r/gocv/opencv
+- https://github.com/JulianAssmann/opencv-cuda-docker/tree/master
+
+## Opencv-CUDA-Eigen
+- dockerfile
+  - Mount projectfolder
+- setup script
+## Opencv + Eigen
+  - dockerfile
+  - projectfolder
+  - liblary paths
+
+## Save container image for easy deployment 
+## Mount buildfiles in local
+
+## Devcontainers in vscode with podman
+https://hackernoon.com/empowering-your-devcontainer-with-podman-in-vs-code

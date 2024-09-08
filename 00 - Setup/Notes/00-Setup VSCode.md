@@ -5,7 +5,6 @@
 - https://code.visualstudio.com/docs/cpp/config-linux
 
 
-
 ---
 # Configure Visual Studio Code for Microsoft C++ (MSVC)
 - https://code.visualstudio.com/docs/cpp/config-msvc
