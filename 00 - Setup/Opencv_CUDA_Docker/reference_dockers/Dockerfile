@@ -6,39 +6,34 @@ ARG OPENCV_VERSION=4.5.3
 RUN apt-get update && apt-get upgrade -y &&\
     # Install build tools, build dependencies and python
     apt-get install -y \
+    build-essential cmake git wget unzip yasm pkg-config \
+    ## Python
+    python3-dev \
+    python3-numpy \
 	python3-pip \
-        build-essential \
-        cmake \
-        git \
-        wget \
-        unzip \
-        yasm \
-        pkg-config \
-        libswscale-dev \
-        libtbb2 \
-        libtbb-dev \
-        libjpeg-dev \
-        libpng-dev \
-        libtiff-dev \
-        libavformat-dev \
-        libpq-dev \
-        libxine2-dev \
-        libglew-dev \
-        libtiff5-dev \
-        zlib1g-dev \
-        libjpeg-dev \
-        libavcodec-dev \
-        libavformat-dev \
-        libavutil-dev \
-        libpostproc-dev \
-        libswscale-dev \
-        libeigen3-dev \
-        libtbb-dev \
-        libgtk2.0-dev \
-        pkg-config \
-        ## Python
-        python3-dev \
-        python3-numpy \
+    # Opencv Reqs
+    libswscale-dev \
+    libtbb2 \
+    libtbb-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libavformat-dev \
+    libpq-dev \
+    libxine2-dev \
+    libglew-dev \
+    libtiff5-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libpostproc-dev \
+    libswscale-dev \
+    libeigen3-dev \
+    libtbb-dev \
+    libgtk2.0-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cd /opt/ &&\
