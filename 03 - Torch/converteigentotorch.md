@@ -1,6 +1,6 @@
 ## https://stackoverflow.com/questions/74231905/how-to-convert-eigen-martix-to-torch-tensor
 
-I'm new to C++. I use Libtorch and Eigen and want to convert Eigen::Martix to Torch::Tensor, but I could not.
+I'm new to C++. I use Libtorch and Eigen and want to convert Eigen::Matrix to Torch::Tensor, but I could not.
 
 I wrote the code below refering to https://github.com/andrewssobral/dtt
 ```
