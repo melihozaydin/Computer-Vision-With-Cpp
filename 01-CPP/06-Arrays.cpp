@@ -54,8 +54,22 @@ int main () {
         std::cout << arr[i] << " ";
     }
     std::cout << std::endl;
-    
 
+
+    // Standart for loop for iteration over array
+    int numbers[] = {1,2,3,4,5} ;
+    for (int i=0; i< sizeof(numbers)/sizeof(int); i++){
+        std::cout << "Number at index: " << i << " - " << numbers[i];
+    }
+
+    std::cout << std::endl;
+
+    // For-each 
+    for (int number : numbers){
+        std::cout << "Number: " << number;
+    }
+
+    std::cout << std::endl;
 
     // ***** Array functions *****
     std::cout << "\n ******* Array Functions ******* \n" << std::endl;

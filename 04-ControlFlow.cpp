@@ -8,6 +8,11 @@ Global variables are initialized prior to the execution of main.
 If the initializer for such a variable invokes a function, 
 then that function will execute prior to main.
 */
+
+/*
+-- Add in For each statements
+*/
+
 int main() {
     // ***** ControlFlow *****
     std::cout << "\n ***** ControlFlow ***** \n" << std::endl;
@@ -20,7 +25,6 @@ int main() {
 
 
     // Conditional Statements
-    // if
     if (true) {
         std::cout << "This is true" << std::endl;
     }
@@ -37,7 +41,7 @@ int main() {
         std::cout << "This is false" << std::endl;
     }
 
-    // if-else if-else
+    // if-else-if
     if (true) {
         std::cout << "This is true" << std::endl;
     }
@@ -69,14 +73,25 @@ int main() {
         std::cout << i << " ";
     }
 
+    
+    int numbers[] = {1,2,3,4,5} ;
+
+    // Standart for loop for iteration over array
+    for (int i=0; i< sizeof(numbers)/sizeof(int); i++){
+        std::cout << "Number at index: " << i << " - " << numbers[i];
+    }
+
+    // For-each 
+    for (int number : numbers){
+        std::cout << "Number: " << number;
+    }
+
     // While loops
     int i = 0;
     while (i < 5) {
         std::cout << i << " ";
         i++;
     }
-
-    
 
     // Do-While loops
     int i = 0;

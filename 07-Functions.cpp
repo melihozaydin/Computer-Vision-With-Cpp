@@ -5,6 +5,12 @@
 // This is the function header (tells the compiler about the existence of the function)
 void printVector1D(std::vector<int> vec);
 
+// function declerations are parsed before any function body in cpp
+//below line will raise a compiler error as it is not a definition
+// ---> ./practice/07-Functions.cpp:10:6: error: ‘cout’ in namespace ‘std’ does not name a type
+//std::cout << "Outside of 'int main()'" << std::endl;
+
+
 // Function Definition
 void printVector1D(std::vector<int> vec) {
     std::cout << "printVector1D: " << std::endl;
@@ -70,27 +76,11 @@ std::vector<std::vector<int>> dotProduct(std::vector<int>vec1, std::vector<std::
 
 void doSomething(int) // ok: unnamed parameter will not generate warning
 {
-    std::cout << "doSomething called" << std::endl;
 }
     
-
-// ***** Function Overloading *****
-// You can have two functions with the same name as long as the have different parameters (declearations)
-
-void doSomething(int val1, int val2) // ok: this is a version of "doSomething" that takes two integers instead of one
-{
-    std::cout << "doSomething (overloaded) called" << std::endl;
-    std::cout << "val1: " << val1 << " val2: " << val2 << std::endl;
-}
-
-
-
 // Definition of user-defined function main()
 int main() {
     std::cout << "Starting main()\n";
-
-    doSomething(1);
-    doSomething(1, 2);
 
     // ***** Functions *****
     std::cout << "***** Functions *****" << std::endl;
