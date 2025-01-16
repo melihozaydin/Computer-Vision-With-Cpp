@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.10)
+
+# Set the project name
+project(MyProject)
+
+# Add the executable
+add_executable(MyProject main.cpp math/add.cpp math/multiply.cpp)
+
+# Include directories
+target_include_directories(MyProject PRIVATE math)Project ${LIBRARIES})Project ${LIBRARIES})
