@@ -1,9 +1,7 @@
 @echo off
 SETLOCAL
 
-::podman build -t cpp_opencv4_cuda .
-
-::podman build -t opencv_cpp_dev -f .\Dockerfile
+podman build -t opencv_cpp_dev -f .\Dockerfile
 
 podman run -it ^
   --name opencv-cpp-cuda_env ^
