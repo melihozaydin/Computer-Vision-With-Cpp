@@ -1,8 +1,6 @@
 # Use Ubuntu 22.04 as the base image
 FROM ubuntu:22.04
 
-LABEL maintainer="Behnam Asadi <behnam.asadi@gmail.com>"
-
 
 # this is for timezone config
 ENV DEBIAN_FRONTEND=noninteractive 

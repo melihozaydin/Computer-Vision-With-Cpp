@@ -4,6 +4,7 @@
 ### Author: Melih Sami Özaydın
 
 ## Notes:
+-- https://github.com/behnamasadi/cpp_tutorials
 -- https://www.learncpp.com/
 -- https://www.youtube.com/watch?v=86FAWCzIe_4&t=3s
     -- https://github.com/Infatoshi/cuda-course
