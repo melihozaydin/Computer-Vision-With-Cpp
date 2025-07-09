@@ -1,0 +1,3 @@
+-- https://www.youtube.com/watch?v=86FAWCzIe_4&t=3s
+    -- https://github.com/Infatoshi/cuda-course
+    -- https://github.com/Infatoshi/mnist-cuda
