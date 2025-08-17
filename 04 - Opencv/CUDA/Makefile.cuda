@@ -1,0 +1,54 @@
+# CUDA OpenCV Examples Makefile
+
+CXX = nvcc
+CXXFLAGS = -std=c++17 -O2
+OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
+BUILD_DIR = .build
+
+# Create build directory if it doesn't exist
+$(shell mkdir -p $(BUILD_DIR))
+
+# Get all .cpp files
+SOURCES = $(wildcard [0-9][0-9]-*.cpp)
+TARGETS = $(SOURCES:%.cpp=$(BUILD_DIR)/%)
+
+# Default target
+all: cuda_check $(TARGETS)
+	@echo "All CUDA examples compiled successfully!"
+
+# Check CUDA availability
+cuda_check:
+	@echo "Checking CUDA installation..."
+	@nvcc --version > /dev/null 2>&1 || (echo "Error: CUDA not found. Please install CUDA toolkit." && exit 1)
+	@echo "✓ CUDA found"
+
+# Pattern rule for compiling
+$(BUILD_DIR)/%: %.cpp | $(BUILD_DIR)
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) $< -o $@ $(OPENCV_FLAGS)
+
+# Individual targets
+00-CUDA_Setup: $(BUILD_DIR)/00-CUDA_Setup
+01-CUDA_Basic_Operations: $(BUILD_DIR)/01-CUDA_Basic_Operations
+02-CUDA_Filtering: $(BUILD_DIR)/02-CUDA_Filtering
+03-CUDA_Morphology: $(BUILD_DIR)/03-CUDA_Morphology
+04-CUDA_Edge_Detection: $(BUILD_DIR)/04-CUDA_Edge_Detection
+05-CUDA_Feature_Detection: $(BUILD_DIR)/05-CUDA_Feature_Detection
+06-CUDA_Optical_Flow: $(BUILD_DIR)/06-CUDA_Optical_Flow
+07-CUDA_Background_Subtraction: $(BUILD_DIR)/07-CUDA_Background_Subtraction
+08-CUDA_Stereo_Matching: $(BUILD_DIR)/08-CUDA_Stereo_Matching
+09-CUDA_Memory_Management: $(BUILD_DIR)/09-CUDA_Memory_Management
+10-CUDA_Performance_Comparison: $(BUILD_DIR)/10-CUDA_Performance_Comparison
+
+# Clean
+clean:
+	@echo "Cleaning CUDA build directory..."
+	@rm -rf $(BUILD_DIR)/*
+
+# Test CUDA environment
+test:
+	@echo "Testing CUDA environment..."
+	@nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits 2>/dev/null || echo "No NVIDIA GPU detected"
+	@nvcc --version 2>/dev/null | head -n 4 || echo "CUDA compiler not found"
+
+.PHONY: all clean test cuda_check $(SOURCES:%.cpp=%)
