@@ -2,7 +2,9 @@
 build
 Resources
 .*
-*/data/*
+data/
+**/data/
+
 *.pt
 runs*
 data/MNIST/raw/train-images-idx3-ubyte.gz
