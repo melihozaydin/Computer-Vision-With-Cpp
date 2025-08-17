@@ -18,13 +18,22 @@ struct Net : torch::nn::Module {
 	torch::nn::Linear fc1{nullptr};
 };
 
-int main() {
+int main(int argc, char** argv) {
+	int num_epochs = 10;
+	float learning_rate = 0.001f;
+	
+	if (argc > 1) num_epochs = std::stoi(argv[1]);
+	if (argc > 2) learning_rate = std::stof(argv[2]);
+	std::cout << "Num epochs: " << num_epochs << ", Learning rate: " << learning_rate << std::endl;
+	
 	// Download MNIST if needed
 	auto train_dataset = torch::data::datasets::MNIST("./data/MNIST/raw").map(torch::data::transforms::Stack<>());
 	auto train_loader = torch::data::make_data_loader(train_dataset, 64);
 	Net net;
-	torch::optim::SGD optimizer(net.parameters(), 0.01);
-	for (int epoch = 0; epoch < 2; ++epoch) {
+
+
+	torch::optim::SGD optimizer(net.parameters(), learning_rate);
+	for (int epoch = 0; epoch < num_epochs ; ++epoch) {
 		size_t batch_idx = 0;
 		for (auto& batch : *train_loader) {
 			auto data = batch.data, target = batch.target;
@@ -42,3 +51,4 @@ int main() {
 	std::cout << "Model saved as mnist_cnn.pt" << std::endl;
 	return 0;
 }
+ 
