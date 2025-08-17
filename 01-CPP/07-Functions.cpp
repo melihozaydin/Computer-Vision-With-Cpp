@@ -28,7 +28,7 @@ void printVector2D(std::vector<std::vector<int>> vec) {
 // Functions can return values
 std::vector<int> DoubleVector1D(std::vector<int> vec) {
     std::cout << "vec1D Doubled" << std::endl;
-    for (int i = 0; i < vec.size(); i++) {
+        for (size_t i = 0; i < vec.size(); i++) {
         vec[i] = vec[i] * 2;
     }
     return vec;
@@ -58,8 +58,8 @@ std::vector<std::vector<int>> dotProduct(std::vector<int>vec1, std::vector<std::
     }
 
     // Implement dot product of 2D vector and 1D vector
-    for (int i = 0; i < vec2.size(); i++) {
-        for (int j = 0; j < vec2[i].size(); j++) {
+        for (size_t i = 0; i < vec2.size(); i++) {
+            for (size_t j = 0; j < vec2[i].size(); j++) {
             vec2[i][j] = vec1[j] * vec2[i][j];
         }
     }

@@ -15,7 +15,7 @@ int main() {
     // Declare and initialize a vector
     std::vector<int> vec = {1, 2, 3, 4, 5};
     // Print the vector
-    for (int i = 0; i < vec.size(); i++) {
+    for (size_t i = 0; i < vec.size(); i++) {
         std::cout << vec[i] << " ";
     }
     std::cout << std::endl;

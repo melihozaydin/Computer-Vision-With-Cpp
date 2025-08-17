@@ -73,23 +73,23 @@ int main() {
 
     //Print values of Vectors
     std::cout << "1D Vector values: ";
-    for (int i = 0; i < vec1D.size(); i++) {
+    for (size_t i = 0; i < vec1D.size(); i++) {
         std::cout << vec1D[i] << " ";
     }
     std::cout << std::endl;
 
     std::cout << "2D Vector values: " << std::endl;
-    for (int i = 0; i < vec2D.size(); i++) {
-        for (int j = 0; j < vec2D[i].size(); j++) {
+    for (size_t i = 0; i < vec2D.size(); i++) {
+        for (size_t j = 0; j < vec2D[i].size(); j++) {
             std::cout << vec2D[i][j] << " ";
         }
         std::cout << std::endl;
     }
 
     std::cout << "3D Vector values: " << std::endl;
-    for (int i = 0; i < vec3D.size(); i++) {
-        for (int j = 0; j < vec3D[i].size(); j++) {
-            for (int k = 0; k < vec3D[i][j].size(); k++) {
+    for (size_t i = 0; i < vec3D.size(); i++) {
+        for (size_t j = 0; j < vec3D[i].size(); j++) {
+            for (size_t k = 0; k < vec3D[i][j].size(); k++) {
                 std::cout << vec3D[i][j][k] << " ";
             }
             std::cout << std::endl;

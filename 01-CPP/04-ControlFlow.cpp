@@ -70,20 +70,18 @@ int main() {
     }
 
     // While loops
-    int i = 0;
-    while (i < 5) {
-        std::cout << i << " ";
-        i++;
+    int w = 0;
+    while (w < 5) {
+        std::cout << w << " ";
+        w++;
     }
 
-    
-
     // Do-While loops
-    int i = 0;
+    int d = 0;
     do {
-        std::cout << i << " ";
-        i++;
-    } while (i < 5);
+        std::cout << d << " ";
+        d++;
+    } while (d < 5);
 
     // Jump Statements
     // Jump statements are used to transfer control to another part of the program.

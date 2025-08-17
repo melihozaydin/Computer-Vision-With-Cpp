@@ -37,20 +37,19 @@ int main () {
     int arr_size = sizeof(arr) / sizeof(arr[0]);
     std::cout << "Size of array arr: " << arr_size << std::endl;
 
-
     // ***** Array Iteration *****
     std::cout << "\n ******* Array Iteration ******* \n" << std::endl;
 
     //array.size() function, which returns the number of elements in the array
-    int arr_size = sizeof(arr) / sizeof(arr[0]);
-    std::cout << "Size of array arr: " << arr_size << std::endl;
+    int arr_size2 = sizeof(arr) / sizeof(arr[0]);
+    std::cout << "Size of array arr: " << arr_size2 << std::endl;
 
     //array.begin() function, which returns an iterator pointing to the first element of the array
     int* arr_begin = std::begin(arr);
     std::cout << "Begin iterator of array arr: " << *arr_begin << std::endl;
 
     // Iterate over the array
-    for (int i = 0; i < arr_size; i++) {
+    for (int i = 0; i < arr_size2; i++) {
         std::cout << arr[i] << " ";
     }
     std::cout << std::endl;
@@ -58,7 +57,8 @@ int main () {
 
     // Standart for loop for iteration over array
     int numbers[] = {1,2,3,4,5} ;
-    for (int i=0; i< sizeof(numbers)/sizeof(int); i++){
+    size_t numbers_count = sizeof(numbers)/sizeof(int);
+    for (size_t i=0; i< numbers_count; i++){
         std::cout << "Number at index: " << i << " - " << numbers[i];
     }
 
