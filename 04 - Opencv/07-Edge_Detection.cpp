@@ -60,8 +60,11 @@ void demonstrateSobelEdges(const cv::Mat& src) {
     
     // Calculate gradient magnitude and direction
     cv::Mat magnitude, direction;
-    cv::magnitude(grad_x, grad_y, magnitude);
-    cv::phase(grad_x, grad_y, direction, true);  // in degrees
+    cv::Mat grad_x_32f, grad_y_32f;
+    grad_x.convertTo(grad_x_32f, CV_32F);
+    grad_y.convertTo(grad_y_32f, CV_32F);
+    cv::magnitude(grad_x_32f, grad_y_32f, magnitude);
+    cv::phase(grad_x_32f, grad_y_32f, direction, true);  // in degrees
     
     // Normalize magnitude for display
     cv::Mat magnitude_norm;
