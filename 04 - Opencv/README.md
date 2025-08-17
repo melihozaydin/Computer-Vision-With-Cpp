@@ -39,10 +39,38 @@ pkg-config --modversion opencv4
 # Compile all examples
 make all
 
+# Quick compilation test (fast - no execution)
+./run_all_examples.sh --test
+
+# Interactive mode (default) - step through examples
+./run_all_examples.sh
+# or explicitly
+./run_all_examples.sh --run
+
+# Automatic mode - run all with short timeouts
+./run_all_examples.sh --auto
+
+# List all available examples
+./run_all_examples.sh --list
+
+# Get help
+./run_all_examples.sh --help
+```
+
+### Individual Example Execution
+```bash
 # Run a specific example
 ./.build/00-OpenCV_Setup
 ./.build/01-Image_IO
 ```
+
+### Script Overview
+- `run_all_examples.sh` - Unified script for compilation testing and execution
+  - `--test`: Fast compilation verification (no execution)
+  - `--run`: Interactive mode with user control (default)
+  - `--auto`: Automatic execution with timeouts
+  - `--list`: List all available examples
+- `Makefile` - Build system for individual and batch compilation
 
 ### Individual Compilation
 ```bash
