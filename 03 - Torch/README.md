@@ -1,177 +1,87 @@
 # Torch C++ Examples (LibTorch)
 
-This folder contains practical C++ examples for image processing and deep learning using LibTorch (the C++ API for PyTorch) and OpenCV.
+This folder contains practical C++ examples for deep learning and image-processing workflows using LibTorch and, for some examples, OpenCV.
 
+## Quick start
 
-## 1. Install LibTorch (PyTorch C++ API)
+### Recommended: Docker
 
-### Recommended: Download Official Release (cxx11 ABI)
-
-Download the latest LibTorch C++ distribution (with CUDA 12.9 support, cxx11 ABI) from the official PyTorch website:
-
-https://download.pytorch.org/libtorch/cu129/libtorch-shared-with-deps-2.8.0%2Bcu129.zip
-
-
-Extract it to a location of your choice, for example:
-
-For CPU:
-(https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.8.0%2Bcpu.zip)
-For Cuda 12.9:
-(https://download.pytorch.org/libtorch/cu129/libtorch-shared-with-deps-2.8.0%2Bcu129.zip)
-```bash
-wget https://download.pytorch.org/libtorch/cu129/libtorch-shared-with-deps-2.8.0%2Bcu129.zip
-unzip libtorch-shared-with-deps-2.8.0+cu129.zip
-```
-
-This will create a `libtorch/` directory in your current folder.
-
-#### Move libtorch to Makefile defined location (/~)
-
-To make compilation easier, you can move the extracted `libtorch` to `/usr/include` (you will need sudo):
+Docker mode is the easiest verified path in this repo.
+It installs an ABI-compatible `libtorch-dev` + `libopencv-dev` toolchain inside the container and then builds the examples there.
 
 ```bash
-sudo mv /usr/include/libtorch ~/libtorch
+cd "03 - Torch"
+./run_all_examples.sh --docker
+./run_all_examples.sh --docker --build-only
+./run_all_examples.sh --help
 ```
 
-The provided `Makefile` is already configured for this setup.
+Notes:
+- Docker image: `pytorch/pytorch:latest`
+- The script installs `build-essential`, `pkg-config`, `libopencv-dev`, and `libtorch-dev` inside the container when needed.
+- Current Docker build mode is **CPU-oriented** because Ubuntu `libtorch-dev` does not ship `libtorch_cuda`.
 
-If you use a different location, update the `CXXFLAGS` and `LDFLAGS` in `Makefile` accordingly.
+### Local WSL
 
-If you want the latest version or other CUDA versions, see the [official PyTorch C++ instructions](https://pytorch.org/cppdocs/installing.html).
+Use local mode if you already have a LibTorch install at `~/libtorch` (or another path you pass via `--libtorch`).
 
-## 2. Install OpenCV
 ```bash
-sudo apt install libopencv-dev libopencv-highgui-dev
+sudo apt install libopencv-dev
+cd "03 - Torch"
+./run_all_examples.sh --local
+./run_all_examples.sh --local --libtorch ~/libtorch
 ```
 
-## 3. Build All Examples
+## Included examples
 
-Use the provided Makefile:
+| File | Topic |
+|------|-------|
+| `00-Torch_Basics.cpp` | Tensor creation and device basics |
+| `01-Torch_Image_Load.cpp` | OpenCV image loading into tensors |
+| `02-Torch_Tensor_Manipulation.cpp` | Shape manipulation and tensor ops |
+| `03-Torch_Image_Normalization.cpp` | Preprocessing pipeline |
+| `04-Torch_Augmentation.cpp` | Simple augmentation flow |
+| `05-Torch_CUDA_Device_Management.cpp` | CUDA availability / device reporting |
+| `10-Torch_Model_Inference.cpp` | Inference with a saved model |
+| `11-Torch_Shape_Debug.cpp` | Shape inspection helpers |
+| `12-Torch_Train_CNN.cpp` | Basic CNN training |
+| `13-Torch_Train_CNN_MNIST.cpp` | MNIST training |
+| `14-Torch_Advanced_Training.cpp` | Early stopping + LR decay |
+| `21-Torch_Custom_Dataset.cpp` | Custom dataset example |
+| `30-MNIST_Desktop_Demo.cpp` | Desktop MNIST inference demo |
+| `30-Torch_Transfer_Learning.cpp` | Transfer-learning example |
+| `31-TorchScript_ServerAPI.cpp` | Optional TorchScript server example |
+| `32-MNIST_Desktop_Demo.cpp` | Alternate desktop demo |
+
+## Optional examples excluded from the default build
+
+Two examples are intentionally excluded from the default `make` / `run_all_examples.sh` build to keep the standard workflow self-contained:
+
+- `20-Torch_Use_TorchVision.cpp`
+  - Requires TorchVision C++.
+- `31-TorchScript_ServerAPI.cpp`
+  - Requires Crow / `crow.h`.
+
+## Notes on models and data
+
+- `13-Torch_Train_CNN_MNIST.cpp` expects the MNIST dataset under `./data/MNIST/raw`.
+  The runner skips it automatically when the dataset is missing.
+- The MNIST desktop demos expect either:
+  - `mnist_cnn_best.pt` for a native LibTorch model, or
+  - `mnist_cnn.pt` for a TorchScript model.
+- If you use `torch::save` / `torch::load`, the C++ model architecture must match exactly across training and loading code.
+
+## Manual build
 
 ```bash
 make
+make clean
 ```
 
-
-
-## 4. Run an Example
-
-```bash
-.build/00-Torch_Basics
-```
-
-
-## 5. Notes
-
-- **Model Architecture Sync (LibTorch .pt):**
-	- If you use `torch::save`/`torch::load` (LibTorch .pt files), the C++ model architecture (layer types, sizes, etc.) must match *exactly* in all C++ files that load the weights. If you change the model in one file (e.g., add batch norm, dropout, or more layers), you must update all other C++ files (such as demos) to match.
-	- If the architectures do not match, loading will fail or give incorrect results.
-
-- **TorchScript Export (Recommended for Deployment):**
-	- TorchScript models exported from Python (`torch.jit.script` or `torch.jit.trace`) include both the architecture and weights. These can be loaded in C++ with `torch::jit::load` without redefining the architecture.
-	- See below for instructions on exporting and using TorchScript models.
-
-- **Device Auto-Detection:**
-	- All C++ examples will automatically use CUDA if available, or fall back to CPU. The device used is printed at startup.
-
-- **Model File Names:**
-	- The desktop demo expects `mnist_cnn_best.pt` for LibTorch models, or `mnist_cnn.pt` for TorchScript models. Make sure you provide the correct file for your workflow.
-
-- The file `20-Torch_Use_TorchVision.cpp` requires TorchVision C++ (not available via apt). By default, it is excluded from the build.
-- To build TorchVision C++ from source:
-	1. Clone the repo:
-			```bash
-			git clone --recursive https://github.com/pytorch/vision.git
-			cd vision
-			```
-	2. Set environment variables to match your LibTorch install:
-			```bash
-			export Torch_DIR=$HOME/libtorch/share/cmake/Torch
-			export CMAKE_PREFIX_PATH=$HOME/libtorch
-			```
-	3. Build with CMake:
-			```bash
-			mkdir build && cd build
-			cmake -DCMAKE_BUILD_TYPE=Release ..
-			make -j$(nproc)
-			sudo make install
-			```
-	4. Add the install/include and install/lib paths to your Makefile's CXXFLAGS and LDFLAGS.
-	5. Remove the filter-out for `20-Torch_Use_TorchVision.cpp` in the Makefile to enable building this example.
-- For CUDA support, install the CUDA-enabled version of LibTorch from the official website.
-- Example image files (e.g., `lenna.png`) should be placed in the `../images/` folder relative to this directory.
-
-
-## Optional: TorchScript Model Export (Python)
-
-
-
-### Why export TorchScript from Python?
-TorchScript models exported from Python include both the model architecture and weights, so you do not need to redefine the model in C++. This is the most robust way to share models between Python and C++ and is recommended for deployment and demos.
-
-### Python requirements
-You need Python 3 and the following packages:
-- torch (PyTorch)
-
-Install with:
-```bash
-cd ~
-sudo apt install python3-pip
-sudo apt install python3.12-venv
-python3 -m venv ~/python-env
-echo 'source ~/python-env/bin/activate' >> ~/.bashrc
-pip install torch torchvision
-```
-
-### How to export a TorchScript MNIST model
-1. Train your MNIST model in Python and save the weights (e.g., `mnist_cnn_weights.pt`).
-2. Use the provided script to export TorchScript:
-
-```bash
-python3 export_torchscript.py mnist_cnn_weights.pt mnist_cnn.pt
-```
-
-This will create `mnist_cnn.pt`, which can be loaded by the C++ desktop and server demos.
-
-#### Example Python script (export_torchscript.py)
-See `03 - Torch/export_torchscript.py` in this repo for a ready-to-use script.
-
-
-### Usage in C++
-All C++ MNIST inference demos (`32-MNIST_Desktop_Demo.cpp`, `31-TorchScript_ServerAPI.cpp`) expect `mnist_cnn.pt` (TorchScript) or `mnist_cnn_best.pt` (LibTorch) in the working directory, depending on your workflow. See above for architecture sync requirements.
-
-
-
-## Optional: Crow HTTP Server Library (for TorchScript API example)
-
-The example `31-TorchScript_ServerAPI.cpp` requires the [Crow](https://github.com/CrowCpp/crow) C++ HTTP server library. You can use either the header-only version or install the .deb package:
-
-### Option 1: Header-only (recommended for most users)
-1. Download the header:
-	```bash
-	wget https://raw.githubusercontent.com/CrowCpp/crow/master/include/crow_all.h -O crow_all.h
-	```
-2. In `31-TorchScript_ServerAPI.cpp`, change the include to:
-	```cpp
-	#include "crow_all.h"
-	```
-3. Add `-I.` (or the path to Crow) to your compile command or Makefile.
-
-### Option 2: Install as a .deb package (Debian/Ubuntu)
-1. Download the latest Crow .deb from the [releases page](https://github.com/CrowCpp/Crow/releases) or use:
-	```bash
-	wget https://github.com/CrowCpp/Crow/releases/download/v1.2.1.2/Crow-1.2.1-Linux.deb
-	sudo apt install ./Crow-1.2.1-Linux.deb
-	```
-2. After install, Crow headers will be available system-wide.
-
-Crow is only needed for the server API example. All other examples do not require it.
-
-
-
----
+If you keep LibTorch somewhere other than `~/libtorch`, update `Makefile` or use the runner with `--libtorch /path/to/libtorch`.
 
 ## References
-- [PyTorch C++ API Documentation](https://pytorch.org/cppdocs/)
-- [LibTorch Download](https://pytorch.org/get-started/locally/#start-locally)
-- [OpenCV Documentation](https://docs.opencv.org/)
+
+- [PyTorch C++ API docs](https://pytorch.org/cppdocs/)
+- [LibTorch install guide](https://pytorch.org/cppdocs/installing.html)
+- [OpenCV docs](https://docs.opencv.org/)
