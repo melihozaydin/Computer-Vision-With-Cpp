@@ -36,19 +36,23 @@ pkg-config --modversion opencv4
 
 ### Quick Start - All Examples
 ```bash
-# Compile all examples
+# Compile all examples (local WSL)
 make all
 
-# Quick compilation test (fast - no execution)
+# Quick compilation test
 ./run_all_examples.sh --test
 
-# Interactive mode (default) - step through examples
+# Run all examples (local WSL, default)
 ./run_all_examples.sh
-# or explicitly
-./run_all_examples.sh --run
 
-# Automatic mode - run all with short timeouts
-./run_all_examples.sh --auto
+# Run all examples inside Docker (no host OpenCV install needed)
+./run_all_examples.sh --docker
+
+# Docker with a specific image
+./run_all_examples.sh --docker --image thecanadianroot/opencv-cuda:latest
+
+# Compile-check inside Docker
+./run_all_examples.sh --docker --test
 
 # List all available examples
 ./run_all_examples.sh --list
@@ -66,10 +70,10 @@ make all
 
 ### Script Overview
 - `run_all_examples.sh` - Unified script for compilation testing and execution
-  - `--test`: Fast compilation verification (no execution)
-  - `--run`: Interactive mode with user control (default)
-  - `--auto`: Automatic execution with timeouts
-  - `--list`: List all available examples
+  - `--local` (default): run on host WSL toolchain
+  - `--docker [--image IMAGE]`: run inside Docker container — no host OpenCV required
+  - `--test`: fast compilation check (no execution)
+  - `--list`: list all available examples
 - `Makefile` - Build system for individual and batch compilation
 
 ### Individual Compilation

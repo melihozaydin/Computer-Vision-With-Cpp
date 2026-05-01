@@ -4,7 +4,7 @@ This document describes the container workflow that matches this repo's current 
 
 For an overview of all run methods (WSL CPU, Docker CUDA, native WSL CUDA), see:
 
-- `00 - Setup/00-BuildSystem/Getting_Started_OpenCV.md`
+- `00 - Setup/00-BuildSystem/Getting_Started.md`
 
 ## Prerequisites
 

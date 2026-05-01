@@ -5,7 +5,7 @@ This directory contains OpenCV C++ examples that use `cv::cuda` for GPU accelera
 > Important: these examples require **both** CUDA toolkit (`nvcc`) and an OpenCV build with CUDA support.
 
 See also:
-- `00 - Setup/00-BuildSystem/Getting_Started_OpenCV.md`
+- `00 - Setup/00-BuildSystem/Getting_Started.md`
 
 ## Quick Start (WSL/Ubuntu)
 

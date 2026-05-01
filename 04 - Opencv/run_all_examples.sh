@@ -300,29 +300,73 @@ run_examples() {
     fi
 }
 
-# Handle script arguments
-case "${1:-}" in
-    --help|-h)
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+DOCKER_MODE=false
+IMAGE="thecanadianroot/opencv-cuda:latest"
+ACTION=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --docker)        DOCKER_MODE=true;  shift ;;
+        --local)         DOCKER_MODE=false; shift ;;
+        --image)         IMAGE="$2"; shift 2 ;;
+        --test|-t)       ACTION="test"; shift ;;
+        --list|-l)       ACTION="list"; shift ;;
+        --help|-h)       ACTION="help"; shift ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use '$0 --help' for usage information"
+            exit 1 ;;
+    esac
+done
+
+# Docker mode: re-run this script inside a container (--local + same action)
+if [[ "$DOCKER_MODE" == "true" ]]; then
+    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    PASS_ARGS="--local"
+    [[ -n "$ACTION" ]] && PASS_ARGS="$PASS_ARGS --$ACTION"
+    echo "Running OpenCV examples in Docker container: $IMAGE"
+    docker run --rm \
+        -v "$REPO_ROOT:/workspace" \
+        "$IMAGE" \
+        bash -lc "cd '/workspace/04 - Opencv' && ./run_all_examples.sh $PASS_ARGS"
+    exit $?
+fi
+
+# ---------------------------------------------------------------------------
+# Local mode — original dispatch
+# ---------------------------------------------------------------------------
+case "$ACTION" in
+    help)
         echo "OpenCV Examples Automated Runner"
-        echo "Usage: $0 [option]"
+        echo "Usage: $0 [--docker|--local] [--image IMAGE] [option]"
         echo ""
-        echo "Options:"
+        echo "Execution mode (default: --local):"
+        echo "  --local            Run on host WSL toolchain"
+        echo "  --docker           Run inside Docker container (no host OpenCV required)"
+        echo "  --image IMAGE      Docker image to use (default: thecanadianroot/opencv-cuda:latest)"
+        echo ""
+        echo "Actions:"
         echo "  --test, -t     Quick compilation test only (no execution)"
         echo "  --list, -l     List all available examples"
         echo "  --help, -h     Show this help message"
         echo "  (no args)      Run all examples automatically"
         echo ""
         echo "Examples:"
-        echo "  $0             # Run all examples (default)"
-        echo "  $0 --test      # Quick compilation check"
-        echo "  $0 --list      # List examples"
+        echo "  $0                        # run all examples (local WSL)"
+        echo "  $0 --docker               # run all inside Docker"
+        echo "  $0 --docker --test        # compile-check inside Docker"
+        echo "  $0 --test                 # quick compilation check (local)"
+        echo "  $0 --list                 # list examples"
         exit 0
         ;;
-    --test|-t)
+    test)
         test_compilation
         exit 0
         ;;
-    --list|-l)
+    list)
         echo "Available OpenCV Examples (37 total):"
         echo "====================================="
         counter=1
@@ -377,11 +421,6 @@ case "${1:-}" in
         ;;
     "")
         # Default: run all examples
-        ;;
-    *)
-        echo "Unknown option: $1"
-        echo "Use '$0 --help' for usage information"
-        exit 1
         ;;
 esac
 
