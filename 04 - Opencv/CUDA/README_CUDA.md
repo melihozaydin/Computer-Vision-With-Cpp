@@ -43,6 +43,95 @@ If you use this repository's container tooling, check:
 - `00 - Setup/00-BuildSystem/02-Containerized/Containerized_Dev.md`
 - `00 - Setup/00-BuildSystem/02-Containerized/Opencv_CUDA_Docker/deploy.bat`
 
+## Scripts
+
+Two convenience scripts are provided to build and run all examples in one command.
+
+### `run_all_cuda_examples.sh` (WSL / Linux)
+
+Builds and runs all 11 CUDA examples. Defaults to Docker mode so no local CUDA install is required.
+
+```bash
+# Build + run all examples (Docker, default)
+./run_all_cuda_examples.sh
+
+# Build + run with a specific Docker image
+./run_all_cuda_examples.sh --image thecanadianroot/opencv-cuda:latest
+
+# Build only (no run)
+./run_all_cuda_examples.sh --build-only
+
+# Run only (assumes binaries already exist in .container_build/build/bin/)
+./run_all_cuda_examples.sh --run-only
+
+# Use local toolchain instead of Docker
+./run_all_cuda_examples.sh --local --opencv-dir /usr/local/lib/cmake/opencv4
+
+# Adjust per-example timeout (default 30s)
+./run_all_cuda_examples.sh --timeout 60
+
+# Clean build artifacts
+./run_all_cuda_examples.sh --clean
+
+# Show help
+./run_all_cuda_examples.sh --help
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--docker` | yes | Run build/examples inside Docker container |
+| `--local` | — | Use host toolchain instead of Docker |
+| `--image IMAGE` | `thecanadianroot/opencv-cuda:latest` | Docker image to use |
+| `--opencv-dir DIR` | `/usr/local/lib/cmake/opencv4` | CMake OpenCV path (local mode) |
+| `--timeout N` | `30` | Seconds before an example is killed |
+| `--build-only` | — | Only build, skip running |
+| `--run-only` | — | Only run, skip building |
+| `--clean` | — | Remove `.container_build/` and exit |
+| `--help` | — | Print usage |
+
+---
+
+### `run_all_cuda_examples.ps1` (Windows PowerShell)
+
+PowerShell wrapper that calls `run_all_cuda_examples.sh` via WSL. Requires WSL2 with Docker.
+
+```powershell
+# Build + run all examples (Docker, default)
+.\run_all_cuda_examples.ps1
+
+# Build + run with a specific Docker image
+.\run_all_cuda_examples.ps1 -Image thecanadianroot/opencv-cuda:latest
+
+# Build only
+.\run_all_cuda_examples.ps1 -BuildOnly
+
+# Run only
+.\run_all_cuda_examples.ps1 -RunOnly
+
+# Use local WSL toolchain
+.\run_all_cuda_examples.ps1 -Mode local -OpenCvDir /usr/local/lib/cmake/opencv4
+
+# Adjust timeout
+.\run_all_cuda_examples.ps1 -Timeout 60
+
+# Clean build artifacts
+.\run_all_cuda_examples.ps1 -Clean
+
+# Show help
+.\run_all_cuda_examples.ps1 -Help
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-Mode docker\|local` | `docker` | `docker` or `local` toolchain |
+| `-Image IMAGE` | `thecanadianroot/opencv-cuda:latest` | Docker image to use |
+| `-OpenCvDir DIR` | `/usr/local/lib/cmake/opencv4` | CMake OpenCV path (local mode) |
+| `-Timeout N` | `30` | Seconds before an example is killed |
+| `-BuildOnly` | — | Only build, skip running |
+| `-RunOnly` | — | Only run, skip building |
+| `-Clean` | — | Remove `.container_build/` and exit |
+| `-Help` | — | Print usage |
+
 ## Prerequisites
 
 ### Required
