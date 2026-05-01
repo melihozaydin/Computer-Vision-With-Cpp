@@ -8,6 +8,8 @@
  */
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/cudaarithm.hpp>
+#include <opencv2/cudafilters.hpp>
 #include <iostream>
 #include <vector>
 

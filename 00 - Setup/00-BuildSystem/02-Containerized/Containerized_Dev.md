@@ -1,50 +1,46 @@
-The other option for development is containerized environments. 
-This is a more advanced setup that allows you to run the development environment in a container, which can be useful for isolating dependencies and ensuring consistency across different machines.
-## Containerized Development Environment
-### Prerequisites
-- Docker installed on your machine
-- Docker Compose installed on your machine
-### Setup
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   ```
-2. Navigate into the project directory:
-   ```bash
-   cd <project-directory>
-   ```
-3. Create a `.env` file from the example:
-   ```bash
-   cp .env.example .env
-   ```
-4. Start the development environment:
-   ```bash
-   docker-compose up -d
-   ```
-5. Access the container:
-   ```bash
-    docker exec -it <container-name> /bin/bash
-    ```
-6. Inside the container, you can run your development commands, such as building the project or running tests.
-7. To stop the development environment, run:
-   ```bash
-   docker-compose down
-   ```
+# Containerized Development Environment (OpenCV / CUDA)
+
+This document describes the container workflow that matches this repo's current OpenCV CUDA execution path.
+
+For an overview of all run methods (WSL CPU, Docker CUDA, native WSL CUDA), see:
+
+- `00 - Setup/00-BuildSystem/Getting_Started_OpenCV.md`
+
+## Prerequisites
+
+- Docker Desktop (or Docker Engine)
+- NVIDIA Container Toolkit / Docker GPU runtime available
+- NVIDIA driver compatible with container CUDA runtime
+
+## Recommended CUDA Workflow
+
+### Option 1: Use an existing CUDA+OpenCV image
+
+Use a known image that has CUDA-enabled OpenCV preinstalled, then mount this repository as `/workspace`.
+
+Inside container:
+- Build from `04 - Opencv/CUDA`
+- Configure with `OpenCV_DIR=/usr/local/lib/cmake/opencv4`
+- Run binaries from `.container_build/build/bin`
+
+### Option 2: Build your own image from this repo
+
+Folder:
+- `00 - Setup/00-BuildSystem/02-Containerized/Opencv_CUDA_Docker/`
+
+Build image from its `Dockerfile`, then run a container with:
+- `--gpus all`
+- repo volume mounted to `/workspace`
+- working directory set to `/workspace/04 - Opencv/CUDA`
 
 ## Development Workflow
-- Host Side:
-  - Use your preferred code editor to edit files in the project directory.
-  - The changes will be reflected inside the container due to the volume mount specified in the `docker-compose.yml` file.
-- Container Side:
-  - Use the terminal inside the container to run build commands, tests, or any other development tasks.
-  - You can install additional dependencies as needed using the package manager inside the container.
 
-### Notes
-- Ensure that your Docker daemon is running before starting the container.
-- You can customize the `.env` file to change environment variables as needed.
-- The containerized environment is designed to be used for development purposes and may not be suitable for production use.
-- If you need to install additional dependencies, you can modify the Dockerfile or use the package manager inside the container.
-- For more advanced configurations, you can modify the `docker-compose.yml` file to suit your needs.
-- This setup allows you to work in a consistent environment regardless of your host machine's configuration.
-- If you encounter issues with file permissions, you may need to adjust the user and group settings in the Dockerfile or use volume mounts with appropriate permissions.
-- You can also use Docker volumes to persist data across container restarts.    
+- Edit code on host in VS Code.
+- Build/run inside container shell.
+- Keep outputs in repo-local build folders (e.g., `.container_build/`) for reproducibility.
+
+## Notes
+
+- If CUDA examples fail on host WSL due to missing `nvcc` or CPU-only OpenCV, use container path.
+- If `pkg-config opencv4` is unavailable in container, prefer CMake + `OpenCV_DIR`.
+- Linux binaries should be run in Linux/container environments, not directly from Windows shell.

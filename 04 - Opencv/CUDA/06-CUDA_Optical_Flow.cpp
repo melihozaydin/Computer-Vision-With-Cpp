@@ -8,6 +8,12 @@
  */
 
 #include <opencv2/opencv.hpp>
+#if __has_include(<opencv2/cudaoptflow.hpp>)
+#include <opencv2/cudaoptflow.hpp>
+#define HAS_OPENCV_CUDA_OPTFLOW 1
+#else
+#define HAS_OPENCV_CUDA_OPTFLOW 0
+#endif
 #include <iostream>
 #include <vector>
 
@@ -21,6 +27,7 @@ int main() {
         cv::Mat roi = img2(cv::Rect(65,65,60,60));
         img1(cv::Rect(60,60,60,60)).copyTo(roi);
 
+    #if HAS_OPENCV_CUDA_OPTFLOW
         // Upload to GPU
         cv::cuda::GpuMat d_img1, d_img2;
         d_img1.upload(img1);
@@ -38,6 +45,16 @@ int main() {
         d_flow.download(flow);
         cv::Scalar mean_flow = cv::mean(flow);
         std::cout << "Farneback (GPU): " << gpu_time << " ms, mean flow: (" << mean_flow[0] << ", " << mean_flow[1] << ")" << std::endl;
+    #else
+        std::cout << "CUDA optical flow module not available in this OpenCV build." << std::endl;
+        std::cout << "Falling back to CPU Farneback for demonstration." << std::endl;
+        cv::Mat flow;
+        auto start = cv::getTickCount();
+        cv::calcOpticalFlowFarneback(img1, img2, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
+        double cpu_time = (cv::getTickCount() - start) / cv::getTickFrequency() * 1000;
+        cv::Scalar mean_flow = cv::mean(flow);
+        std::cout << "Farneback (CPU): " << cpu_time << " ms, mean flow: (" << mean_flow[0] << ", " << mean_flow[1] << ")" << std::endl;
+    #endif
     } catch (const cv::Exception& e) {
         std::cerr << "OpenCV CUDA Error: " << e.what() << std::endl;
         return -1;

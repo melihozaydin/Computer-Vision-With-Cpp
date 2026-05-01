@@ -8,6 +8,12 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudaarithm.hpp>
+#if __has_include(<opencv2/cudafilters.hpp>)
+#include <opencv2/cudafilters.hpp>
+#define HAS_OPENCV_CUDA_FILTERS 1
+#else
+#define HAS_OPENCV_CUDA_FILTERS 0
+#endif
 #include <iostream>
 
 int main() {
@@ -41,13 +47,13 @@ int main() {
             std::cout << "  Multiprocessors: " << device_info.multiProcessorCount() << std::endl;
             std::cout << "  Max Threads per Block: " << device_info.maxThreadsPerBlock() << std::endl;
             std::cout << "  Max Thread Dimensions: (" 
-                      << device_info.maxThreadsDim().x << ", "
-                      << device_info.maxThreadsDim().y << ", "
-                      << device_info.maxThreadsDim().z << ")" << std::endl;
+                      << device_info.maxThreadsDim()[0] << ", "
+                      << device_info.maxThreadsDim()[1] << ", "
+                      << device_info.maxThreadsDim()[2] << ")" << std::endl;
             std::cout << "  Max Grid Size: ("
-                      << device_info.maxGridSize().x << ", "
-                      << device_info.maxGridSize().y << ", "
-                      << device_info.maxGridSize().z << ")" << std::endl;
+                      << device_info.maxGridSize()[0] << ", "
+                      << device_info.maxGridSize()[1] << ", "
+                      << device_info.maxGridSize()[2] << ")" << std::endl;
         }
         
         // Set device (if multiple available)
@@ -124,12 +130,17 @@ int main() {
         
         // Test Gaussian blur
         cv::cuda::GpuMat gpu_blurred;
+    #if HAS_OPENCV_CUDA_FILTERS
         cv::Ptr<cv::cuda::Filter> gaussian_filter = cv::cuda::createGaussianFilter(
             gpu_gray.type(), -1, cv::Size(15, 15), 5.0);
         
         start = cv::getTickCount();
         gaussian_filter->apply(gpu_gray, gpu_blurred);
         double gpu_blur_time = (cv::getTickCount() - start) / cv::getTickFrequency() * 1000;
+    #else
+        std::cout << "CUDA filters module not available; using CPU Gaussian blur timing only." << std::endl;
+        double gpu_blur_time = 0.0;
+    #endif
         
         cv::Mat cpu_blurred;
         start = cv::getTickCount();
@@ -139,7 +150,9 @@ int main() {
         std::cout << "Gaussian blur (15x15, sigma=5):" << std::endl;
         std::cout << "  GPU: " << gpu_blur_time << " ms" << std::endl;
         std::cout << "  CPU: " << cpu_blur_time << " ms" << std::endl;
+    #if HAS_OPENCV_CUDA_FILTERS
         std::cout << "  Speedup: " << cpu_blur_time / gpu_blur_time << "x" << std::endl;
+    #endif
         
         std::cout << "\n✓ CUDA setup verification complete!" << std::endl;
         std::cout << "GPU acceleration is working correctly." << std::endl;

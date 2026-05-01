@@ -8,6 +8,12 @@
  */
 
 #include <opencv2/opencv.hpp>
+#if __has_include(<opencv2/cudafilters.hpp>)
+#include <opencv2/cudafilters.hpp>
+#define HAS_OPENCV_CUDA_FILTERS 1
+#else
+#define HAS_OPENCV_CUDA_FILTERS 0
+#endif
 #include <iostream>
 #include <vector>
 
@@ -23,6 +29,9 @@ int main() {
         cv::cuda::GpuMat d_img, d_erode, d_dilate, d_open, d_close;
         d_img.upload(img);
 
+        cv::Mat out;
+
+    #if HAS_OPENCV_CUDA_FILTERS
         // Erosion
         cv::Ptr<cv::cuda::Filter> erode = cv::cuda::createMorphologyFilter(cv::MORPH_ERODE, d_img.type(), element);
         erode->apply(d_img, d_erode);
@@ -40,7 +49,6 @@ int main() {
         close->apply(d_img, d_close);
 
         // Download and print sample values
-        cv::Mat out;
         d_erode.download(out);
         std::cout << "Eroded pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
         d_dilate.download(out);
@@ -49,6 +57,18 @@ int main() {
         std::cout << "Opened pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
         d_close.download(out);
         std::cout << "Closed pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
+    #else
+        std::cout << "CUDA morphology filters not available in this OpenCV build." << std::endl;
+        std::cout << "Falling back to CPU morphology for demonstration." << std::endl;
+        cv::erode(img, out, element);
+        std::cout << "Eroded pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
+        cv::dilate(img, out, element);
+        std::cout << "Dilated pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
+        cv::morphologyEx(img, out, cv::MORPH_OPEN, element);
+        std::cout << "Opened pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
+        cv::morphologyEx(img, out, cv::MORPH_CLOSE, element);
+        std::cout << "Closed pixel [60,60]: " << (int)out.at<uchar>(60,60) << std::endl;
+    #endif
     } catch (const cv::Exception& e) {
         std::cerr << "OpenCV CUDA Error: " << e.what() << std::endl;
         return -1;
