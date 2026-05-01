@@ -100,8 +100,9 @@ int main(int argc, char** argv) {
 
     // Optimizer
     torch::optim::SGD optimizer(net.parameters(), learning_rate);
-    // LR scheduler
-    torch::optim::StepLR scheduler(optimizer, /*step_size=*/5, /*gamma=*/0.5);
+    // LR scheduler (manual decay for broad LibTorch compatibility)
+    const int lr_step_size = 5;
+    const double lr_gamma = 0.5;
     TensorBoardLogger tb(logdir);
 
     float best_loss = std::numeric_limits<float>::max();
@@ -165,7 +166,14 @@ int main(int argc, char** argv) {
                 break;
             }
         }
-        scheduler.step();
+        if ((epoch + 1) % lr_step_size == 0) {
+            for (auto& param_group : optimizer.param_groups()) {
+                auto& options = static_cast<torch::optim::SGDOptions&>(param_group.options());
+                options.lr(options.lr() * lr_gamma);
+            }
+            std::cout << "  [LR] Decayed learning rate by factor " << lr_gamma
+                      << " at epoch " << (epoch + 1) << std::endl;
+        }
     }
     std::cout << "\n=== Training Summary ===" << std::endl;
     std::cout << "Best epoch: " << best_epoch << std::endl;

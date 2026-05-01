@@ -26,6 +26,7 @@
 #   Local mode:   ~/libtorch extracted from pytorch.org (see 03 - Torch/README.md)
 #                 sudo apt install libopencv-dev
 #   Docker mode:  Docker with optional NVIDIA runtime (nvidia-smi in WSL)
+#                 Installs ABI-compatible libtorch-dev + libopencv-dev via apt
 
 set -uo pipefail
 
@@ -108,23 +109,24 @@ if [[ "$DOCKER_MODE" == "true" ]]; then
     print_info "Note: First run installs libopencv-dev inside the container (~1 min)."
     print_info "      Subsequent runs on the same container layer are instant."
 
-    # The container ships LibTorch at the Python torch package location.
-    # We detect it at runtime and pass it to the Makefile.
+    # In Docker mode, install ABI-compatible system libtorch + OpenCV from apt.
+    # This avoids ABI mismatch between Python-packaged torch and Ubuntu OpenCV.
     INNER_CMD='
 set -e
-echo "==> Detecting LibTorch path inside container..."
-LIBTORCH=$(python3 -c "import torch, os; print(os.path.dirname(torch.__file__))")
-echo "    LibTorch: $LIBTORCH"
-
-echo "==> Installing libopencv-dev (silently)..."
-apt-get update -qq && apt-get install -y -qq libopencv-dev > /dev/null 2>&1
+if [[ -f /usr/include/opencv4/opencv2/core.hpp ]] && [[ -f /usr/include/torch/csrc/api/include/torch/torch.h ]] && command -v make >/dev/null 2>&1; then
+    echo "==> OpenCV + LibTorch headers and build tools already present, skipping apt install"
+else
+    echo "==> Installing required packages (build tools + OpenCV dev + LibTorch dev)."
+    echo "    This can take several minutes on first run..."
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends build-essential pkg-config libopencv-dev libtorch-dev
+    echo "==> Package install completed"
+fi
 
 cd "/workspace/03 - Torch"
 
-CXXFLAGS="-std=c++17 -O2 -I${LIBTORCH}/include -I${LIBTORCH}/include/torch/csrc/api/include -I/usr/include/opencv4"
-LDFLAGS="-L${LIBTORCH}/lib -Wl,--no-as-needed -ltorch -ltorch_cpu -lc10 -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui -Wl,-rpath,${LIBTORCH}/lib"
-
-./run_all_examples.sh --local --timeout '"$TIMEOUT"' '"$([ "$BUILD_ONLY" = true ] && echo '--build-only' || echo '')"' '"$([ "$RUN_ONLY" = true ] && echo '--run-only' || echo '')"' --libtorch "$LIBTORCH"
+TORCH_USE_SYSTEM=1 TORCH_ABI_OVERRIDE=1 ./run_all_examples.sh --local --timeout '"$TIMEOUT"' '"$([ "$BUILD_ONLY" = true ] && echo '--build-only' || echo '')"' '"$([ "$RUN_ONLY" = true ] && echo '--run-only' || echo '')"' --libtorch /usr
 '
 
     # shellcheck disable=SC2086
@@ -137,25 +139,62 @@ fi
 
 # ── Local mode ────────────────────────────────────────────────────────────────
 if [[ "$RUN_ONLY" == "false" ]]; then
-    if [[ ! -d "$LIBTORCH_DIR" ]]; then
-        print_fail "LibTorch not found at: $LIBTORCH_DIR"
-        echo "Download from https://pytorch.org/cppdocs/installing.html"
-        echo "Or use --docker to build without a local LibTorch install."
-        exit 1
+    ABI_DEFINE=""
+    if [[ -n "${TORCH_ABI_OVERRIDE:-}" ]]; then
+        ABI_DEFINE="-D_GLIBCXX_USE_CXX11_ABI=${TORCH_ABI_OVERRIDE}"
+        print_info "Using Torch ABI override: ${TORCH_ABI_OVERRIDE}"
     fi
 
-    print_header "Building all examples  (libtorch: $LIBTORCH_DIR)"
+    TORCH_CUDA_LIB=""
+    if [[ "${TORCH_USE_SYSTEM:-0}" == "1" ]]; then
+        if [[ ! -f /usr/include/torch/csrc/api/include/torch/torch.h ]]; then
+            print_fail "System LibTorch headers not found (/usr/include/torch/csrc/api/include/torch/torch.h)."
+            echo "Install with: sudo apt install libtorch-dev"
+            exit 1
+        fi
 
-    CXXFLAGS_OVERRIDE="-std=c++17 -O2 \
-        -I${LIBTORCH_DIR}/include \
-        -I${LIBTORCH_DIR}/include/torch/csrc/api/include \
-        -I/usr/include/opencv4"
-    LDFLAGS_OVERRIDE="-L${LIBTORCH_DIR}/lib \
-        -Wl,--no-as-needed \
-        -ltorch -ltorch_cpu -ltorch_cuda -lc10 \
-        -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui \
-        -Wl,-rpath,${LIBTORCH_DIR}/lib \
-        -L/usr/lib/x86_64-linux-gnu"
+        if ldconfig -p 2>/dev/null | grep -q 'libtorch_cuda.so'; then
+            TORCH_CUDA_LIB="-ltorch_cuda"
+        else
+            print_warn "libtorch_cuda not found in system LibTorch; building CPU-only Torch targets"
+        fi
+
+        print_header "Building all examples  (libtorch: system /usr)"
+        CXXFLAGS_OVERRIDE="$ABI_DEFINE -std=c++17 -O2 \
+            -I/usr/include \
+            -I/usr/include/torch/csrc/api/include \
+            -I/usr/include/opencv4"
+        LDFLAGS_OVERRIDE="-L/usr/lib/x86_64-linux-gnu \
+            -Wl,--no-as-needed \
+            -ltorch -ltorch_cpu $TORCH_CUDA_LIB -lc10 \
+            -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui \
+            -Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+    else
+        if [[ ! -d "$LIBTORCH_DIR" ]]; then
+            print_fail "LibTorch not found at: $LIBTORCH_DIR"
+            echo "Download from https://pytorch.org/cppdocs/installing.html"
+            echo "Or use --docker to build without a local LibTorch install."
+            exit 1
+        fi
+
+        if [[ -f "$LIBTORCH_DIR/lib/libtorch_cuda.so" ]]; then
+            TORCH_CUDA_LIB="-ltorch_cuda"
+        else
+            print_warn "libtorch_cuda not found under $LIBTORCH_DIR/lib; building CPU-only Torch targets"
+        fi
+
+        print_header "Building all examples  (libtorch: $LIBTORCH_DIR)"
+        CXXFLAGS_OVERRIDE="$ABI_DEFINE -std=c++17 -O2 \
+            -I${LIBTORCH_DIR}/include \
+            -I${LIBTORCH_DIR}/include/torch/csrc/api/include \
+            -I/usr/include/opencv4"
+        LDFLAGS_OVERRIDE="-L${LIBTORCH_DIR}/lib \
+            -Wl,--no-as-needed \
+            -ltorch -ltorch_cpu $TORCH_CUDA_LIB -lc10 \
+            -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui \
+            -Wl,-rpath,${LIBTORCH_DIR}/lib \
+            -L/usr/lib/x86_64-linux-gnu"
+    fi
 
     if ! make -f Makefile \
         CXXFLAGS="$CXXFLAGS_OVERRIDE" \
