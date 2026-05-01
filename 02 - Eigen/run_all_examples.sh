@@ -45,7 +45,19 @@ while [[ $# -gt 0 ]]; do
         --clean)       CLEAN=true;       shift ;;
         --timeout)     TIMEOUT="$2";     shift 2 ;;
         --help|-h)
-            sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+                        cat <<'EOF'
+Eigen Examples Runner (02 - Eigen)
+Usage:
+    ./run_all_examples.sh              # build + run all
+    ./run_all_examples.sh --build-only # build only, skip running
+    ./run_all_examples.sh --run-only   # run only (assumes built)
+    ./run_all_examples.sh --timeout N  # per-example timeout in seconds (default: 15)
+    ./run_all_examples.sh --clean      # remove .build/ and exit
+    ./run_all_examples.sh --help       # show this help
+
+Prerequisites (local WSL/Linux):
+    sudo apt install build-essential libeigen3-dev
+EOF
             exit 0 ;;
         *)
             echo "Unknown option: $1  (use --help)"

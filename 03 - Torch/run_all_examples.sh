@@ -63,7 +63,19 @@ while [[ $# -gt 0 ]]; do
         --timeout)     TIMEOUT="$2";             shift 2 ;;
         --libtorch)    LIBTORCH_DIR="$2";        shift 2 ;;
         --help|-h)
-            sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//'
+                        cat <<'EOF'
+LibTorch Examples Runner (03 - Torch)
+Usage:
+    ./run_all_examples.sh                      # local build + run
+    ./run_all_examples.sh --docker             # Docker build + run
+    ./run_all_examples.sh --docker --image pytorch/pytorch:latest
+    ./run_all_examples.sh --build-only         # local build only
+    ./run_all_examples.sh --run-only           # local run only
+    ./run_all_examples.sh --timeout N          # per-example timeout (default: 30)
+    ./run_all_examples.sh --libtorch DIR       # override ~/libtorch path (local mode)
+    ./run_all_examples.sh --clean              # remove .build/ and exit
+    ./run_all_examples.sh --help               # show this help
+EOF
             exit 0 ;;
         *)
             echo "Unknown option: $1  (use --help)"
@@ -162,10 +174,29 @@ print_header "Running all examples  (timeout: ${TIMEOUT}s each)"
 
 ok=0; timeout_count=0; fail=0
 total=0
+skipped=0
 
-for binary in .build/*; do
-    [[ -f "$binary" && -x "$binary" ]] || continue
-    name="$(basename "$binary")"
+# Build run list from current source files to avoid stale binaries in .build/
+mapfile -t targets < <(find . -maxdepth 1 -type f -name '*.cpp' -printf '%f\n' | sed 's/\.cpp$//' | sort)
+
+for name in "${targets[@]}"; do
+    # This file is excluded by Makefile unless user manually enables TorchVision C++
+    [[ "$name" == "20-Torch_Use_TorchVision" ]] && continue
+
+    binary=".build/$name"
+    if [[ ! -x "$binary" ]]; then
+        print_warn "$name  (binary not found: $binary)"
+        skipped=$((skipped + 1))
+        continue
+    fi
+
+    # Skip MNIST dataset-dependent example when dataset is unavailable
+    if [[ "$name" == "13-Torch_Train_CNN_MNIST" && ! -f "./data/MNIST/raw/train-images-idx3-ubyte" ]]; then
+        print_warn "$name  (skipped: MNIST dataset not found under ./data/MNIST/raw)"
+        skipped=$((skipped + 1))
+        continue
+    fi
+
     total=$((total + 1))
 
     output=$(timeout "${TIMEOUT}s" "$binary" 2>&1)
@@ -186,6 +217,6 @@ done
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 print_header "Summary"
-echo -e "  ${GREEN}ok=${ok}${NC}  ${YELLOW}timeout=${timeout_count}${NC}  ${RED}fail=${fail}${NC}  total=${total}"
+echo -e "  ${GREEN}ok=${ok}${NC}  ${YELLOW}timeout=${timeout_count}${NC}  ${RED}fail=${fail}${NC}  skipped=${skipped}  total=${total}"
 
 [[ $fail -gt 0 ]] && exit 1 || exit 0

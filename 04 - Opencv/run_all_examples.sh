@@ -324,7 +324,7 @@ done
 
 # Docker mode: re-run this script inside a container (--local + same action)
 if [[ "$DOCKER_MODE" == "true" ]]; then
-    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
     PASS_ARGS="--local"
     [[ -n "$ACTION" ]] && PASS_ARGS="$PASS_ARGS --$ACTION"
     echo "Running OpenCV examples in Docker container: $IMAGE"

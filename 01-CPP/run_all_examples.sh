@@ -45,7 +45,19 @@ while [[ $# -gt 0 ]]; do
         --clean)       CLEAN=true;       shift ;;
         --timeout)     TIMEOUT="$2";     shift 2 ;;
         --help|-h)
-            sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+                        cat <<'EOF'
+C++ Examples Runner (01-CPP)
+Usage:
+    ./run_all_examples.sh              # build + run all
+    ./run_all_examples.sh --build-only # build only, skip running
+    ./run_all_examples.sh --run-only   # run only (assumes built)
+    ./run_all_examples.sh --timeout N  # per-example timeout in seconds (default: 10)
+    ./run_all_examples.sh --clean      # remove .build/ and exit
+    ./run_all_examples.sh --help       # show this help
+
+Prerequisites (local WSL/Linux):
+    sudo apt install build-essential
+EOF
             exit 0 ;;
         *)
             echo "Unknown option: $1  (use --help)"
