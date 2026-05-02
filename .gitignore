@@ -4,6 +4,7 @@ Resources
 .*
 data/
 **/data/
+*.pcd
 
 *.pt
 runs*

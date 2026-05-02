@@ -58,7 +58,7 @@ int main() {
         viewer.addPointCloud<pcl::PointXYZ>(target, blue, "target");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "target");
 
-        viewer.addCoordinateSystem(0.1, 0);
+        viewer.addCoordinateSystem(0.1, "axes", 0);
         viewer.initCameraParameters();
         
         std::cout << "Red = source, Green = aligned (after ICP), Blue = target. Press 'q' to quit." << std::endl;

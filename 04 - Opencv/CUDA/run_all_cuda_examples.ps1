@@ -85,7 +85,7 @@ $argString = [string]::Join(' ', $quotedArgs)
 # Run in WSL
 # Use escaped spaces for `cd` because nested shell quoting can be finicky on Windows->WSL hops.
 $cdPath = $scriptDirWsl -replace ' ', '\ '
-$bashCmd = "cd $cdPath && chmod +x ./run_all_cuda_examples.sh && ./run_all_cuda_examples.sh $argString"
+$bashCmd = "cd $cdPath && chmod +x ./run_all_examples.sh && ./run_all_examples.sh $argString"
 Write-Host "[INFO] Running in WSL: $bashCmd"
 
 wsl.exe -e bash -lc $bashCmd

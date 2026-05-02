@@ -29,10 +29,13 @@ cd "06 - PCL"
 
 ```bash
 cd "06 - PCL"
-./run_all_examples.sh --docker
+./build_docker_env.sh              # once (skips if already built)
+./run_all_examples.sh --docker --gui
 ```
 
-Docker mode uses `ubuntu:22.04` and installs `libpcl-dev` automatically.
+Docker mode now uses a prebuilt runtime image (`cv-pcl-runtime:22.04`) so startup is fast after the first build.
+
+> **Current limitation (this repo setup):** Docker runs are reliable for build/compute checks, but live VTK visualization windows may not open depending on WSLg/container GUI forwarding state. If you need guaranteed interactive popups, use local mode.
 
 ## Build manually
 
@@ -49,11 +52,19 @@ Each example opens an interactive 3D viewer when run locally:
 - **Pan**: right mouse button drag
 - **Press 'q'** to close the viewer and exit
 
-**Headless environments** (WSL without X server, Docker without display): The viewer will catch exceptions and print a skip message; all computation still runs and prints results to stdout.
+**Headless environments** (WSL without X server, Docker without display): The viewer catches exceptions and prints a skip message; all computation still runs and prints results to stdout.
+
+For dependable interactive windows in this project, prefer:
+
+```bash
+cd "06 - PCL"
+./run_all_examples.sh --local --gui
+```
 
 ## Notes
 
 - These examples use `pcl::visualization::PCLVisualizer` to provide real-time 3D feedback, making physics-like phenomena directly observable (point clouds rotating, planes fitting, alignments converging).
 - `01-Cloud_Generation.cpp` writes `synthetic_line_cloud.pcd` in this folder (can be loaded by other PCL tools).
 - PCL can be heavy to install; Docker mode is convenient when you do not want a local PCL setup.
+- If Docker windows do not appear, use local mode (`./run_all_examples.sh --gui`) inside a WSL terminal launched from VS Code/Windows Terminal with WSLg enabled.
 - For batch or server-side processing, you can suppress the visualizer by modifying the try-catch to skip viewer calls.

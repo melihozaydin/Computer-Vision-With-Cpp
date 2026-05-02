@@ -21,7 +21,7 @@ int main() {
         pcl::visualization::PCLVisualizer viewer("Setup Test");
         viewer.addPointCloud<pcl::PointXYZ>(cloud, "cloud");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "cloud");
-        viewer.addCoordinateSystem(0.5, 0);
+        viewer.addCoordinateSystem(0.5, "axes", 0);
         viewer.initCameraParameters();
         
         std::cout << "Visualizer opened. Rotate with mouse, press 'q' to quit." << std::endl;

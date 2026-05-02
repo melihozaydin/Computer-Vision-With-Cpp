@@ -36,7 +36,7 @@ BUILD_TYPE="Release"
 DO_BUILD=1
 DO_RUN=1
 DO_CLEAN=0
-IMAGE="thecanadianroot/opencv-cuda:latest"
+DOCKER_RUNTIME_IMAGE="cv-opencv-cuda-runtime:latest"
 
 # In local mode, this can be overridden with --opencv-dir
 OPENCV_DIR_DEFAULT="/usr/local/lib/cmake/opencv4"
@@ -53,7 +53,8 @@ Options:
   --docker                 Run inside CUDA container (default)
   --local                  Run on host toolchain (WSL/Linux)
   --timeout <sec>          Timeout per example run (default: ${TIMEOUT_SECONDS})
-  --image <name:tag>       Docker image for --docker mode
+  --image <name:tag>       Runtime image tag for --docker mode (alias)
+  --docker-runtime-image <name:tag>  Runtime image tag for --docker mode
   --opencv-dir <path>      OpenCVConfig.cmake dir for --local mode
   --build-only             Build examples only, do not run
   --run-only               Run existing binaries only, do not rebuild
@@ -79,8 +80,13 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --image)
-      IMAGE="${2:-}"
-      [[ -n "$IMAGE" ]] || { err "--image requires a value"; exit 2; }
+      DOCKER_RUNTIME_IMAGE="${2:-}"
+      [[ -n "$DOCKER_RUNTIME_IMAGE" ]] || { err "--image requires a value"; exit 2; }
+      shift 2
+      ;;
+    --docker-runtime-image)
+      DOCKER_RUNTIME_IMAGE="${2:-}"
+      [[ -n "$DOCKER_RUNTIME_IMAGE" ]] || { err "--docker-runtime-image requires a value"; exit 2; }
       shift 2
       ;;
     --opencv-dir)
@@ -228,7 +234,15 @@ run_local_mode() {
 # ----------------------------------------------------------------------------
 run_docker_mode() {
   log "Mode: docker"
-  log "Image: $IMAGE"
+  log "Image: $DOCKER_RUNTIME_IMAGE"
+  local container_name="cv-opencv-cuda-run-$(date +%s)-$$"
+  log "Container: $container_name"
+
+  if ! docker image inspect "$DOCKER_RUNTIME_IMAGE" >/dev/null 2>&1; then
+    err "Docker runtime image '$DOCKER_RUNTIME_IMAGE' not found."
+    log "Build it once with: ./build_docker_env.sh"
+    exit 1
+  fi
 
   # Convert current repo path from WSL style for Docker on Linux/WSL usage.
   # This script is intended for bash environments where Docker CLI is available.
@@ -236,9 +250,10 @@ run_docker_mode() {
 
   # Run all logic INSIDE container to avoid host dependency drift.
   docker run --rm --gpus all -i \
+    --name "$container_name" \
     -v "$mount_repo:/workspace" \
     -w "/workspace/04 - Opencv/CUDA" \
-    "$IMAGE" \
+    "$DOCKER_RUNTIME_IMAGE" \
     bash -s -- "$TIMEOUT_SECONDS" "$DO_BUILD" "$DO_RUN" "$DO_CLEAN" "$BUILD_TYPE" <<'INNER_SCRIPT'
 set -euo pipefail
 

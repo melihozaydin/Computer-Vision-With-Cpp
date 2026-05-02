@@ -38,7 +38,7 @@ int main() {
         viewer.addPointCloud<pcl::PointXYZ>(filtered, blue, "filtered");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "filtered");
 
-        viewer.addCoordinateSystem(0.1, 0);
+        viewer.addCoordinateSystem(0.1, "axes", 0);
         viewer.initCameraParameters();
         
         std::cout << "Red = original (dense), Blue = downsampled. Press 'q' to quit." << std::endl;

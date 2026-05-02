@@ -28,7 +28,7 @@ int main() {
         pcl::visualization::PCLVisualizer viewer("Cloud Generation");
         viewer.addPointCloud<pcl::PointXYZ>(cloud, "cloud");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "cloud");
-        viewer.addCoordinateSystem(0.2, 0);
+        viewer.addCoordinateSystem(0.2, "axes", 0);
         viewer.initCameraParameters();
         
         std::cout << "Showing generated wavy line cloud. Press 'q' to quit." << std::endl;

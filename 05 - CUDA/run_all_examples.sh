@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 DOCKER_MODE=true
-IMAGE="nvidia/cuda:12.3.2-devel-ubuntu22.04"
+DOCKER_RUNTIME_IMAGE="cv-cuda-runtime:12.3.2"
 BUILD_ONLY=false
 RUN_ONLY=false
 CLEAN=false
@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --docker) DOCKER_MODE=true; shift ;;
     --local) DOCKER_MODE=false; shift ;;
-    --image) IMAGE="$2"; shift 2 ;;
+    --docker-runtime-image|--image) DOCKER_RUNTIME_IMAGE="$2"; shift 2 ;;
     --build-only) BUILD_ONLY=true; shift ;;
     --run-only) RUN_ONLY=true; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
@@ -41,9 +41,10 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Pure CUDA examples runner (05 - CUDA)
 Usage:
-  ./run_all_examples.sh               # Docker build + run (default)
+  ./run_all_examples.sh               # Docker run via prebuilt runtime (default)
   ./run_all_examples.sh --docker      # same as default
   ./run_all_examples.sh --local       # host nvcc toolchain
+  ./run_all_examples.sh --docker-runtime-image TAG   # override runtime image
   ./run_all_examples.sh --build-only  # compile only
   ./run_all_examples.sh --run-only    # run existing binaries only
   ./run_all_examples.sh --timeout N   # per-example timeout (default: 12)
@@ -65,20 +66,22 @@ fi
 if [[ "$DOCKER_MODE" == "true" ]]; then
   REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
   GPU_FLAG=""
+  CONTAINER_NAME="cv-cuda-run-$(date +%s)-$$"
   if docker info 2>/dev/null | grep -q nvidia; then
     GPU_FLAG="--gpus all"
+  fi
+  if ! docker image inspect "$DOCKER_RUNTIME_IMAGE" >/dev/null 2>&1; then
+    print_fail "Docker runtime image '$DOCKER_RUNTIME_IMAGE' not found."
+    print_info "Build it once with: ./build_docker_env.sh"
+    exit 1
   fi
   PASS_ARGS="--local --timeout $TIMEOUT"
   [[ "$BUILD_ONLY" == "true" ]] && PASS_ARGS="$PASS_ARGS --build-only"
   [[ "$RUN_ONLY" == "true" ]] && PASS_ARGS="$PASS_ARGS --run-only"
-  print_info "Image: $IMAGE"
-  docker run --rm $GPU_FLAG -v "$REPO_ROOT:/workspace" "$IMAGE" bash -lc "
+  print_info "Image: $DOCKER_RUNTIME_IMAGE"
+  print_info "Container: $CONTAINER_NAME"
+  docker run --rm --name "$CONTAINER_NAME" $GPU_FLAG -v "$REPO_ROOT:/workspace" "$DOCKER_RUNTIME_IMAGE" bash -lc "
     set -e
-    export DEBIAN_FRONTEND=noninteractive
-    if ! command -v make >/dev/null 2>&1; then
-      apt-get update
-      apt-get install -y --no-install-recommends build-essential
-    fi
     cd '/workspace/05 - CUDA'
     ./run_all_examples.sh $PASS_ARGS
   "

@@ -20,13 +20,14 @@ No OpenCV, Eigen, or LibTorch required.
 
 ```bash
 cd "05 - CUDA"
-./run_all_examples.sh                  # docker mode by default
-./run_all_examples.sh --build-only
-./run_all_examples.sh --help
+./build_docker_env.sh                  # once
+./run_docker_examples.sh               # repeat as needed
+./run_docker_examples.sh --build-only
+./run_docker_examples.sh --help
 ```
 
-Default Docker image:
-- `nvidia/cuda:12.3.2-devel-ubuntu22.04`
+Default runtime image:
+- `cv-cuda-runtime:12.3.2` (built from `nvidia/cuda:12.3.2-devel-ubuntu22.04`)
 
 ### Local toolchain
 
@@ -53,3 +54,4 @@ make clean
 - These examples are deliberately small and educational rather than fully optimized.
 - The training examples use full-batch gradient descent to keep the kernels easy to read.
 - Docker mode is recommended when your host WSL does not have `nvcc` installed.
+- Docker environment build is separated from run so startup is fast on repeated runs.

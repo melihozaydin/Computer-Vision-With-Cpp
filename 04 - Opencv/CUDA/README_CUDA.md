@@ -34,6 +34,12 @@ If step (2) fails with `nvcc: command not found`, install CUDA toolkit in your L
 
 If your host/WSL OpenCV does not provide CUDA modules, run these examples in a CUDA-enabled container.
 
+```bash
+cd "04 - Opencv/CUDA"
+./build_docker_env.sh          # once
+./run_docker_examples.sh       # repeat as needed
+```
+
 Container workflow:
 - Mount this repo into `/workspace`
 - Build examples with CMake using `OpenCV_DIR=/usr/local/lib/cmake/opencv4`
@@ -47,41 +53,44 @@ If you use this repository's container tooling, check:
 
 Two convenience scripts are provided to build and run all examples in one command.
 
-### `run_all_cuda_examples.sh` (WSL / Linux)
+### `run_all_examples.sh` (WSL / Linux)
 
-Builds and runs all 11 CUDA examples. Defaults to Docker mode so no local CUDA install is required.
+Builds and runs all 11 CUDA examples. Docker mode now expects a prebuilt runtime image.
 
 ```bash
-# Build + run all examples (Docker, default)
-./run_all_cuda_examples.sh
+# Build Docker runtime image once
+./build_docker_env.sh
 
-# Build + run with a specific Docker image
-./run_all_cuda_examples.sh --image thecanadianroot/opencv-cuda:latest
+# Build + run all examples (Docker)
+./run_all_examples.sh --docker
+
+# Build + run with a specific runtime image tag
+./run_all_examples.sh --docker --docker-runtime-image cv-opencv-cuda-runtime:latest
 
 # Build only (no run)
-./run_all_cuda_examples.sh --build-only
+./run_all_examples.sh --build-only
 
 # Run only (assumes binaries already exist in .container_build/build/bin/)
-./run_all_cuda_examples.sh --run-only
+./run_all_examples.sh --run-only
 
 # Use local toolchain instead of Docker
-./run_all_cuda_examples.sh --local --opencv-dir /usr/local/lib/cmake/opencv4
+./run_all_examples.sh --local --opencv-dir /usr/local/lib/cmake/opencv4
 
 # Adjust per-example timeout (default 30s)
-./run_all_cuda_examples.sh --timeout 60
+./run_all_examples.sh --timeout 60
 
 # Clean build artifacts
-./run_all_cuda_examples.sh --clean
+./run_all_examples.sh --clean
 
 # Show help
-./run_all_cuda_examples.sh --help
+./run_all_examples.sh --help
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--docker` | yes | Run build/examples inside Docker container |
 | `--local` | — | Use host toolchain instead of Docker |
-| `--image IMAGE` | `thecanadianroot/opencv-cuda:latest` | Docker image to use |
+| `--docker-runtime-image IMAGE` | `cv-opencv-cuda-runtime:latest` | Prebuilt runtime image to use |
 | `--opencv-dir DIR` | `/usr/local/lib/cmake/opencv4` | CMake OpenCV path (local mode) |
 | `--timeout N` | `30` | Seconds before an example is killed |
 | `--build-only` | — | Only build, skip running |

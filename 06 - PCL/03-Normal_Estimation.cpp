@@ -42,7 +42,7 @@ int main() {
         // Draw normal vectors as cyan lines
         viewer.addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(cloud, normals, 5, 0.02, "normals");
 
-        viewer.addCoordinateSystem(0.1, 0);
+        viewer.addCoordinateSystem(0.1, "axes", 0);
         viewer.initCameraParameters();
         
         std::cout << "Green points = cloud, Cyan lines = normals (every 5th). Press 'q' to quit." << std::endl;
