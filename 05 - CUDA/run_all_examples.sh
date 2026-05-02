@@ -6,7 +6,7 @@
 #   --docker (default)  Run inside an NVIDIA CUDA devel container.
 #   --local             Use host nvcc toolchain.
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -17,6 +17,7 @@ BUILD_ONLY=false
 RUN_ONLY=false
 CLEAN=false
 TIMEOUT=12
+VERBOSE=true
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BLUE='\033[0;34m'; NC='\033[0m'
 print_info(){ echo -e "${CYAN}[INFO] $1${NC}"; }
@@ -33,6 +34,8 @@ while [[ $# -gt 0 ]]; do
     --build-only) BUILD_ONLY=true; shift ;;
     --run-only) RUN_ONLY=true; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
+    --no-timeout) TIMEOUT=0; shift ;;
+    --quiet) VERBOSE=false; shift ;;
     --clean) CLEAN=true; shift ;;
     --help|-h)
       cat <<'EOF'
@@ -44,6 +47,8 @@ Usage:
   ./run_all_examples.sh --build-only  # compile only
   ./run_all_examples.sh --run-only    # run existing binaries only
   ./run_all_examples.sh --timeout N   # per-example timeout (default: 12)
+  ./run_all_examples.sh --no-timeout  # disable per-example timeout
+  ./run_all_examples.sh --quiet       # reduce log verbosity
   ./run_all_examples.sh --clean       # remove .build/ and exit
 EOF
       exit 0 ;;
@@ -71,7 +76,8 @@ if [[ "$DOCKER_MODE" == "true" ]]; then
     set -e
     export DEBIAN_FRONTEND=noninteractive
     if ! command -v make >/dev/null 2>&1; then
-      apt-get update >/dev/null && apt-get install -y --no-install-recommends build-essential >/dev/null
+      apt-get update
+      apt-get install -y --no-install-recommends build-essential
     fi
     cd '/workspace/05 - CUDA'
     ./run_all_examples.sh $PASS_ARGS
@@ -90,7 +96,7 @@ if [[ "$RUN_ONLY" == "false" ]]; then
   fi
 
   print_header "Building CUDA examples"
-  if ! make all 2>&1; then
+  if ! make all; then
     print_fail "Build failed"
     exit 1
   fi
@@ -107,8 +113,24 @@ for name in "${targets[@]}"; do
   binary=".build/$name"
   [[ -x "$binary" ]] || { print_warn "$name  (binary not found)"; continue; }
   total=$((total + 1))
-  output=$(timeout "${TIMEOUT}s" "$binary" 2>&1)
-  code=$?
+  [[ "$VERBOSE" == "true" ]] && print_info "Running $name"
+  tmp_out=$(mktemp)
+  if [[ "$TIMEOUT" -eq 0 ]]; then
+    if "$binary" >"$tmp_out" 2>&1; then
+      code=0
+    else
+      code=$?
+    fi
+  else
+    if timeout "${TIMEOUT}s" "$binary" >"$tmp_out" 2>&1; then
+      code=0
+    else
+      code=$?
+    fi
+  fi
+  if [[ "$VERBOSE" == "true" ]] && [[ -s "$tmp_out" ]]; then
+    sed 's/^/    /' "$tmp_out" | head -40
+  fi
   if [[ $code -eq 0 ]]; then
     print_ok "✓ $name"
     ok=$((ok + 1))
@@ -117,9 +139,10 @@ for name in "${targets[@]}"; do
     timeout_count=$((timeout_count + 1))
   else
     print_fail "✗ $name  (exit $code)"
-    [[ -n "$output" ]] && echo "$output" | head -8 | sed 's/^/    /'
+    [[ -s "$tmp_out" ]] && sed 's/^/    /' "$tmp_out" | head -20
     fail=$((fail + 1))
   fi
+  rm -f "$tmp_out"
 done
 
 print_header "Summary"
