@@ -1,5 +1,5 @@
 CXX ?= g++
-VTK_LIBS ?= -lvtkRenderingCore-9.1 -lvtkCommonCore-9.1 -lvtkCommonDataModel-9.1 -lvtkCommonMath-9.1 -lvtkCommonTransforms-9.1 -lvtkRenderingOpenGL2-9.1 -lvtkInteractionStyle-9.1 -lvtkRenderingFreeType-9.1 -lvtkFiltersSources-9.1 -lvtkRenderingContext2D-9.1 -lvtkCommonColor-9.1
+VTK_LIBS ?= -lvtkRenderingCore-9.1 -lvtkRenderingLOD-9.1 -lvtkCommonCore-9.1 -lvtkCommonDataModel-9.1 -lvtkCommonMath-9.1 -lvtkCommonTransforms-9.1 -lvtkRenderingOpenGL2-9.1 -lvtkInteractionStyle-9.1 -lvtkRenderingFreeType-9.1 -lvtkFiltersSources-9.1 -lvtkRenderingContext2D-9.1 -lvtkCommonColor-9.1
 PCL_MODULES ?= $(shell \
 	if pkg-config --exists pcl_common; then \
 		echo "pcl_common pcl_io pcl_filters pcl_features pcl_segmentation pcl_registration pcl_kdtree pcl_search pcl_sample_consensus pcl_visualization"; \

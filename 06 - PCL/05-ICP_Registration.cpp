@@ -28,7 +28,7 @@ int main() {
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
     icp.setInputSource(source);
     icp.setInputTarget(target);
-    icp.setMaxIterations(50);
+    icp.setMaximumIterations(50);
     icp.setTransformationEpsilon(1e-8);
     icp.setEuclideanFitnessEpsilon(1e-6);
     
