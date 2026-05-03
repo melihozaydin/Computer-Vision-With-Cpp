@@ -19,6 +19,7 @@ CLEAN=false
 TIMEOUT=12
 VERBOSE=true
 GUI_MODE=false
+INCLUDE_ADIF=false
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BLUE='\033[0;34m'; NC='\033[0m'
 print_info(){ echo -e "${CYAN}[INFO] $1${NC}"; }
@@ -26,6 +27,66 @@ print_ok(){ echo -e "${GREEN}$1${NC}"; }
 print_warn(){ echo -e "${YELLOW}$1${NC}"; }
 print_fail(){ echo -e "${RED}$1${NC}"; }
 print_header(){ echo -e "\n${BLUE}== $1 ==${NC}"; }
+
+run_target() {
+  local name="$1"
+  local workdir="$2"
+  shift 2
+  local cmd=("$@")
+  local env_clause=""
+  local env_cmd=()
+
+  if [[ "$GUI_MODE" != "true" ]]; then
+    env_clause="PCL_FORCE_HEADLESS=1 DISPLAY= WAYLAND_DISPLAY= XDG_SESSION_TYPE= "
+    env_cmd=(env PCL_FORCE_HEADLESS=1 DISPLAY= WAYLAND_DISPLAY= XDG_SESSION_TYPE=)
+  fi
+
+  total=$((total + 1))
+  [[ "$VERBOSE" == "true" ]] && print_info "Running $name"
+
+  local tmp_out
+  tmp_out=$(mktemp)
+  local code=0
+
+  if [[ "$TIMEOUT" -eq 0 ]]; then
+    if (cd "$workdir" && "${env_cmd[@]}" "${cmd[@]}") >"$tmp_out" 2>&1; then
+      code=0
+    else
+      code=$?
+    fi
+  else
+    if timeout --signal=INT --kill-after=2s "${TIMEOUT}s" bash -lc "cd '$workdir' && ${env_clause}${cmd[*]}" >"$tmp_out" 2>&1; then
+      code=0
+    else
+      code=$?
+    fi
+  fi
+
+  if [[ "$VERBOSE" == "true" ]] && [[ -s "$tmp_out" ]]; then
+    sed 's/^/    /' "$tmp_out" | head -40
+  fi
+
+  if grep -Eq "Visualization skipped \(headless environment\)|Visualisation skipped \(no interactive DISPLAY/WAYLAND_DISPLAY detected\.\)|bad X server connection\. DISPLAY=|basic_string: construction from null is not valid" "$tmp_out"; then
+    if [[ "$GUI_MODE" == "true" ]]; then
+      print_warn "⚠ $name  (GUI requested but visualization was skipped in this environment)"
+    else
+      print_warn "⚠ $name  (headless: visualization skipped; compute output above is valid)"
+    fi
+    headless_skip=$((headless_skip + 1))
+  elif [[ $code -eq 0 ]]; then
+    print_ok "✓ $name"
+    ok=$((ok + 1))
+  elif [[ $code -eq 124 ]] || [[ $code -eq 139 && $(grep -c "timeout: the monitored command dumped core" "$tmp_out") -gt 0 ]]; then
+    print_warn "⚠ $name  (timeout)"
+    timeout_count=$((timeout_count + 1))
+  else
+    print_fail "✗ $name  (exit $code)"
+    [[ -s "$tmp_out" ]] && sed 's/^/    /' "$tmp_out" | head -20
+    fail=$((fail + 1))
+  fi
+
+  rm -f "$tmp_out"
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,6 +99,7 @@ while [[ $# -gt 0 ]]; do
     --no-timeout) TIMEOUT=0; shift ;;
     --quiet) VERBOSE=false; shift ;;
     --gui|--docker-gui) GUI_MODE=true; shift ;;
+    --with-adif|--adif-smoke) INCLUDE_ADIF=true; shift ;;
     --clean) CLEAN=true; shift ;;
     --help|-h)
       cat <<'EOF'
@@ -52,6 +114,7 @@ Usage:
   ./run_all_examples.sh --no-timeout  # disable per-example timeout
   ./run_all_examples.sh --quiet       # reduce log verbosity
   ./run_all_examples.sh --gui         # enable GUI forwarding (local/docker)
+  ./run_all_examples.sh --with-adif   # also build + smoke-test ADIF/
   ./run_all_examples.sh --clean       # remove .build/ and exit
 EOF
       exit 0 ;;
@@ -60,7 +123,9 @@ EOF
 done
 
 if [[ "$CLEAN" == "true" ]]; then
-  rm -rf .build synthetic_line_cloud.pcd
+  rm -rf .build ADIF/.build synthetic_line_cloud.pcd
+  rm -f data/reference_part.pcd data/scanned_part.pcd data/cleaned_scan.pcd
+  rm -f ADIF/data/reference_part.pcd ADIF/data/scanned_part.pcd
   echo "Cleaned outputs"
   exit 0
 fi
@@ -73,6 +138,7 @@ if [[ "$DOCKER_MODE" == "true" ]]; then
   [[ "$RUN_ONLY" == "true" ]] && PASS_ARGS="$PASS_ARGS --run-only"
   [[ "$VERBOSE" == "false" ]] && PASS_ARGS="$PASS_ARGS --quiet"
   [[ "$GUI_MODE" == "true" ]] && PASS_ARGS="$PASS_ARGS --gui"
+  [[ "$INCLUDE_ADIF" == "true" ]] && PASS_ARGS="$PASS_ARGS --with-adif"
 
   GUI_DOCKER_ARGS=""
   if [[ "$GUI_MODE" == "true" ]]; then
@@ -144,6 +210,15 @@ if [[ "$RUN_ONLY" == "false" ]]; then
   mkdir -p .build
   echo "$BUILD_CONTEXT" > "$BUILD_ORIGIN_FILE"
   print_ok "Build complete → .build/"
+
+  if [[ "$INCLUDE_ADIF" == "true" ]]; then
+    print_header "Building ADIF smoke-test"
+    if ! (cd ADIF && make all); then
+      print_fail "ADIF build failed"
+      exit 1
+    fi
+    print_ok "ADIF build complete → ADIF/.build/"
+  fi
 fi
 
 [[ "$BUILD_ONLY" == "true" ]] && exit 0
@@ -155,45 +230,14 @@ mapfile -t targets < <(find . -maxdepth 1 -type f -name '*.cpp' -printf '%f\n' |
 for name in "${targets[@]}"; do
   binary=".build/$name"
   [[ -x "$binary" ]] || { print_warn "$name  (binary not found)"; continue; }
-  total=$((total + 1))
-  [[ "$VERBOSE" == "true" ]] && print_info "Running $name"
-  tmp_out=$(mktemp)
-  if [[ "$TIMEOUT" -eq 0 ]]; then
-    if "$binary" >"$tmp_out" 2>&1; then
-      code=0
-    else
-      code=$?
-    fi
-  else
-    if timeout --signal=INT --kill-after=2s "${TIMEOUT}s" "$binary" >"$tmp_out" 2>&1; then
-      code=0
-    else
-      code=$?
-    fi
-  fi
-  if [[ "$VERBOSE" == "true" ]] && [[ -s "$tmp_out" ]]; then
-    sed 's/^/    /' "$tmp_out" | head -40
-  fi
-  if grep -Eq "Visualization skipped \(headless environment\)|bad X server connection\. DISPLAY=|basic_string: construction from null is not valid" "$tmp_out"; then
-    if [[ "$GUI_MODE" == "true" ]]; then
-      print_warn "⚠ $name  (GUI requested but visualization was skipped in this environment)"
-    else
-      print_warn "⚠ $name  (headless: visualization skipped; compute output above is valid)"
-    fi
-    headless_skip=$((headless_skip + 1))
-  elif [[ $code -eq 0 ]]; then
-    print_ok "✓ $name"
-    ok=$((ok + 1))
-  elif [[ $code -eq 124 ]] || [[ $code -eq 139 && $(grep -c "timeout: the monitored command dumped core" "$tmp_out") -gt 0 ]]; then
-    print_warn "⚠ $name  (timeout)"
-    timeout_count=$((timeout_count + 1))
-  else
-    print_fail "✗ $name  (exit $code)"
-    [[ -s "$tmp_out" ]] && sed 's/^/    /' "$tmp_out" | head -20
-    fail=$((fail + 1))
-  fi
-  rm -f "$tmp_out"
+  run_target "$name" "$SCRIPT_DIR" "$binary"
 done
+
+if [[ "$INCLUDE_ADIF" == "true" ]]; then
+  print_header "Running ADIF smoke-test"
+  run_target "ADIF/generate_data" "$SCRIPT_DIR/ADIF" ".build/generate_data"
+  run_target "ADIF/adif" "$SCRIPT_DIR/ADIF" ".build/adif" "data/reference_part.pcd" "data/scanned_part.pcd" "--tolerance" "0.001"
+fi
 
 print_header "Summary"
 echo -e "  ${GREEN}ok=${ok}${NC}  ${YELLOW}headless=${headless_skip}${NC}  ${YELLOW}timeout=${timeout_count}${NC}  ${RED}fail=${fail}${NC}  total=${total}"
