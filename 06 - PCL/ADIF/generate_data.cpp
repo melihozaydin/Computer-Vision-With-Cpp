@@ -51,6 +51,15 @@ constexpr float DENT_RADIUS   = 0.018f;   // 18 mm dent patch
 constexpr float DENT_CX       = -0.030f;
 constexpr float DENT_CY       =  0.020f;
 
+// A raised bump simulates weld spatter or a material build-up (oversized).
+// Having BOTH a dent (undersized, −Z) and a bump (oversized, +Z) ensures all
+// three colour bands appear in the deviation map: blue, green, and red.
+// Placed on the opposite side of the plate from the dent so they don't overlap.
+constexpr float BUMP_DEPTH    =  0.002f;  // 2.0 mm proud above nominal surface
+constexpr float BUMP_RADIUS   =  0.012f;  // 12 mm affected patch
+constexpr float BUMP_CX       =  0.040f;
+constexpr float BUMP_CY       = -0.025f;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Uniformly distribute N points on a rectangle [x0,x1]×[y0,y1] at z = z0
@@ -156,23 +165,49 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr buildScanned(
         p.y += gauss(rng);
         p.z += gauss(rng);
 
-        // Dent on the top face — push points downward (−Z)
-        if (std::abs(p.z - PLATE_H) < 0.002f) {   // only top-face points
+        // A 2 mm guard (>> sensor noise σ = 0.4 mm) isolates the top face
+        // without clipping legitimate surface geometry near the plate edge.
+        if (std::abs(p.z - PLATE_H) < 0.002f) {
             Eigen::Vector3f pt(p.x, p.y, p.z);
-            float dist = (pt - dent_centre).norm();
-            if (dist < DENT_RADIUS) {
+
+            // Dent — push inward (−Z).  Cosine taper gives a smooth C¹
+            // boundary so there are no unrealistic sharp edges in the cloud.
+            float dist_dent = (pt - dent_centre).norm();
+            if (dist_dent < DENT_RADIUS) {
                 float alpha = 0.5f * (1.0f + std::cos(
-                                  static_cast<float>(M_PI) * dist / DENT_RADIUS));
+                                  static_cast<float>(M_PI) * dist_dent / DENT_RADIUS));
                 p.z -= DENT_DEPTH * alpha;
+            }
+
+            // Bump — push outward (+Z, oversized → red in the deviation map).
+            Eigen::Vector3f bump_centre(BUMP_CX, BUMP_CY, PLATE_H);
+            float dist_bump = (pt - bump_centre).norm();
+            if (dist_bump < BUMP_RADIUS) {
+                float alpha = 0.5f * (1.0f + std::cos(
+                                  static_cast<float>(M_PI) * dist_bump / BUMP_RADIUS));
+                p.z += BUMP_DEPTH * alpha;
             }
         }
     }
 
-    // Rigid misalignment: 5° yaw + 1° pitch + 2 mm translation
+    // Rigid misalignment — simulates a part placed on the fixture with small
+    // angular and positional errors.
+    //
+    // Eigen::Affine3f accumulation rules (important for getting the order right):
+    //   .rotate(R)       → T = T * R        (post-multiply)
+    //   .pretranslate(t) → T = Trans(t) * T (pre-multiply)
+    //
+    // After two rotates:     T = R_yaw * R_pitch
+    // After pretranslate(t): T = Trans(t) * R_yaw * R_pitch
+    // Applied to point p:    p' = R_yaw * R_pitch * p  +  t
+    //
+    // Interpretation: the part is first rotated (fixture angular error),
+    // then offset by t in the world frame (fixture positional error).
+    // This is the natural model for a mis-seated part on a fixture.
     Eigen::Affine3f T = Eigen::Affine3f::Identity();
-    T.rotate(Eigen::AngleAxisf(0.087f,  Eigen::Vector3f::UnitZ()));  // 5°
-    T.rotate(Eigen::AngleAxisf(0.017f,  Eigen::Vector3f::UnitY()));  // 1°
-    T.pretranslate(Eigen::Vector3f(0.002f, -0.001f, 0.0005f));
+    T.rotate(Eigen::AngleAxisf(0.087f,  Eigen::Vector3f::UnitZ()));  // 5° yaw
+    T.rotate(Eigen::AngleAxisf(0.017f,  Eigen::Vector3f::UnitY()));  // 1° pitch
+    T.pretranslate(Eigen::Vector3f(0.002f, -0.001f, 0.0005f));       // world-frame offset
     pcl::transformPointCloud(*cloud, *cloud, T);
 
     return cloud;
@@ -183,12 +218,15 @@ int main() {
 
     auto ref = buildReference();
     std::cout << "Reference part : " << ref->size() << " points\n";
-    pcl::io::savePCDFileASCII("data/reference_part.pcd", *ref);
+    // Binary PCD is ~10× faster to write/read than ASCII and preserves full
+    // float precision (ASCII truncates to ~7 significant digits, which
+    // introduces rounding errors at sub-millimetre scales).
+    pcl::io::savePCDFileBinary("data/reference_part.pcd", *ref);
     std::cout << "Saved → data/reference_part.pcd\n";
 
     auto scan = buildScanned(ref);
     std::cout << "Scanned part   : " << scan->size() << " points\n";
-    pcl::io::savePCDFileASCII("data/scanned_part.pcd", *scan);
+    pcl::io::savePCDFileBinary("data/scanned_part.pcd", *scan);
     std::cout << "Saved → data/scanned_part.pcd\n\n";
 
     std::cout << "Part parameters:\n"
@@ -199,6 +237,8 @@ int main() {
               << "  Sensor noise σ : " << NOISE_SIGMA*1000 << " mm\n"
               << "  Dent depth     : " << DENT_DEPTH*1000  << " mm\n"
               << "  Dent radius    : " << DENT_RADIUS*1000 << " mm\n"
+              << "  Bump height    : " << BUMP_DEPTH*1000  << " mm\n"
+              << "  Bump radius    : " << BUMP_RADIUS*1000 << " mm\n"
               << "  Misalignment   : 5° yaw, 1° pitch, 2 mm translation\n\n"
               << "Run 'adif data/reference_part.pcd data/scanned_part.pcd' next.\n";
 

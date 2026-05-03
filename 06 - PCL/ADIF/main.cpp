@@ -62,6 +62,7 @@
 #include <pcl/registration/sample_consensus_prerejective.h>
 #include <pcl/registration/icp.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
 #include "../pcl_viewer_utils.h"
@@ -89,24 +90,29 @@ using CloudFeat = pcl::PointCloud<FeatureT>;
 struct Config {
     std::string ref_path;
     std::string scan_path;
-    float tolerance = 0.001f;   // 1 mm
-    float voxel     = 0.002f;   // 2 mm
+    float tolerance   = 0.001f;   // 1 mm
+    float voxel       = 0.002f;   // 2 mm
+    float pass_thresh = 95.0f;    // PASS if ≥ N% of scanned points are within tolerance
+    std::string output;           // optional path: save deviation map PCD here
 };
 
 Config parseArgs(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "Usage: adif <reference.pcd> <scanned.pcd>"
-                     " [--tolerance <m>] [--voxel <m>]\n";
+                     " [--tolerance <m>] [--voxel <m>]"
+                     " [--pass-threshold <%>] [--output <path.pcd>]\n";
         std::exit(1);
     }
     Config cfg;
     cfg.ref_path  = argv[1];
     cfg.scan_path = argv[2];
     for (int i = 3; i + 1 < argc; i += 2) {
-        std::string key = argv[i];
-        float val = std::stof(argv[i + 1]);
-        if (key == "--tolerance") cfg.tolerance = val;
-        else if (key == "--voxel") cfg.voxel    = val;
+        std::string key     = argv[i];
+        std::string str_val = argv[i + 1];
+        if      (key == "--tolerance")      cfg.tolerance   = std::stof(str_val);
+        else if (key == "--voxel")          cfg.voxel       = std::stof(str_val);
+        else if (key == "--pass-threshold") cfg.pass_thresh = std::stof(str_val);
+        else if (key == "--output")         cfg.output      = str_val;
     }
     return cfg;
 }
@@ -175,8 +181,11 @@ CloudFeat::Ptr computeFPFH(const CloudT::Ptr& cloud,
 }
 
 // ── Global alignment: FPFH + SampleConsensusPrerejective ─────────────────────
-// Returns the aligned cloud + whether it converged.
-std::pair<CloudT::Ptr, bool> globalAlign(
+// Returns the aligned cloud, convergence flag, AND the 4×4 rigid transform.
+// The transform is returned so the caller can apply its rotation part to the
+// scan's normal vectors before point-to-plane ICP (normals are direction
+// vectors — they rotate with the cloud but are not affected by translation).
+std::tuple<CloudT::Ptr, bool, Eigen::Matrix4f> globalAlign(
     const CloudT::Ptr& source,     const CloudFeat::Ptr& source_feat,
     const CloudT::Ptr& target,     const CloudFeat::Ptr& target_feat,
     float voxel)
@@ -195,7 +204,30 @@ std::pair<CloudT::Ptr, bool> globalAlign(
 
     auto result = CloudT::Ptr(new CloudT());
     align.align(*result);
-    return {result, align.hasConverged()};
+    return {result, align.hasConverged(), align.getFinalTransformation()};
+}
+
+// ── Merge XYZ cloud + normals into a PointNormal cloud ────────────────────────────
+// PCL's ICP variants work on a single cloud type; PointNormal packs xyz and
+// normal_xyz together.  This helper avoids re-estimating normals after the
+// global alignment step and lets us reuse the already-computed scan_normals.
+CloudNT::Ptr mergeWithNormals(const CloudT::Ptr& cloud,
+                               const pcl::PointCloud<pcl::Normal>::Ptr& normals)
+{
+    auto out = CloudNT::Ptr(new CloudNT());
+    out->resize(cloud->size());
+    for (size_t i = 0; i < cloud->size(); ++i) {
+        out->points[i].x        = cloud->points[i].x;
+        out->points[i].y        = cloud->points[i].y;
+        out->points[i].z        = cloud->points[i].z;
+        out->points[i].normal_x = normals->points[i].normal_x;
+        out->points[i].normal_y = normals->points[i].normal_y;
+        out->points[i].normal_z = normals->points[i].normal_z;
+    }
+    out->width    = cloud->width;
+    out->height   = cloud->height;
+    out->is_dense = cloud->is_dense;
+    return out;
 }
 
 // ── Deviation computation & colour coding ────────────────────────────────────
@@ -253,21 +285,32 @@ std::pair<CloudRGB::Ptr, std::vector<float>> computeDeviations(
 }
 
 // ── Inspection report ─────────────────────────────────────────────────────────
-void printReport(const std::vector<float>& devs, float tolerance) {
-    double sum_sq = 0.0;
-    float  max_dev = 0.0f;
-    int    in_tol  = 0;
+// pass_thresh: percentage of in-tolerance points required for PASS.
+// Exposing this as a parameter avoids hard-coding product-specific limits;
+// different parts or standards may require 99%, 90%, etc.
+void printReport(const std::vector<float>& devs, float tolerance, float pass_thresh) {
+    double sum_sq     = 0.0;
+    double sum_signed = 0.0;
+    float  max_dev    = 0.0f;
+    int    in_tol     = 0;
 
     for (float d : devs) {
-        sum_sq  += d * d;
-        max_dev  = std::max(max_dev, std::abs(d));
+        sum_sq     += d * d;
+        sum_signed += d;
+        max_dev     = std::max(max_dev, std::abs(d));
         if (std::abs(d) <= tolerance) ++in_tol;
     }
 
-    double mse  = sum_sq / devs.size();
-    double rmse = std::sqrt(mse);
-    double pct  = 100.0 * in_tol / devs.size();
-    bool   pass = (pct >= 95.0);   // PASS if ≥ 95 % of points within tolerance
+    double mse      = sum_sq / static_cast<double>(devs.size());
+    double rmse     = std::sqrt(mse);
+    // Mean SIGNED deviation reveals systematic bias:
+    //   Positive mean -> surface is globally proud (tool wear, thermal expansion)
+    //   Negative mean -> surface is globally sunk (under-cut, shrinkage)
+    // Random noise produces equal + and - deviations so the mean -> 0 even when
+    // RMSE is non-zero.  A persistent non-zero mean signals a systematic problem.
+    double mean_dev = sum_signed / static_cast<double>(devs.size());
+    double pct      = 100.0 * in_tol / static_cast<double>(devs.size());
+    bool   pass     = (pct >= static_cast<double>(pass_thresh));
 
     const std::string sep(52, '=');
     std::cout << "\n" << sep << "\n";
@@ -275,14 +318,20 @@ void printReport(const std::vector<float>& devs, float tolerance) {
     std::cout << sep << "\n";
     std::cout << std::fixed << std::setprecision(4);
     std::cout << "  Points analysed  : " << devs.size()    << "\n";
-    std::cout << "  Tolerance (±)    : " << tolerance*1000 << " mm\n";
-    std::cout << "  MSE              : " << mse * 1e6      << " mm²\n";
-    std::cout << "  RMSE             : " << rmse * 1000    << " mm\n";
-    std::cout << "  Max |deviation|  : " << max_dev * 1000 << " mm\n";
-    std::cout << "  In tolerance     : " << in_tol << " / " << devs.size()
+    std::cout << "  Tolerance (+-) : " << tolerance*1000 << " mm\n";
+    std::cout << "  MSE            : " << mse * 1e6      << " mm^2\n";
+    std::cout << "  RMSE           : " << rmse * 1000    << " mm\n";
+    std::cout << "  Max |deviation|: " << max_dev * 1000 << " mm\n";
+    std::cout << "  Mean deviation : " << std::showpos << mean_dev * 1000
+              << std::noshowpos << " mm"
+              << (std::abs(mean_dev) * 1000 < tolerance * 1000 * 0.1
+                      ? "  (no systematic bias)\n"
+                      : "  (systematic bias -- check registration!)\n");
+    std::cout << "  In tolerance   : " << in_tol << " / " << devs.size()
               << "  (" << std::setprecision(1) << pct << "%)\n";
+    std::cout << "  Pass threshold : " << pass_thresh << "%\n";
     std::cout << sep << "\n";
-    std::cout << "  RESULT           : " << (pass ? "PASS ✓" : "FAIL ✗") << "\n";
+    std::cout << "  RESULT         : " << (pass ? "PASS" : "FAIL") << "\n";
     std::cout << sep << "\n\n";
 }
 
@@ -322,26 +371,66 @@ int main(int argc, char** argv) {
 
     // 5. Global alignment
     std::cout << "Global alignment   (SampleConsensusPrerejective + FPFH)...\n";
-    auto [rough, global_ok] = globalAlign(scan, scan_feat, ref, ref_feat, cfg.voxel);
+    auto [rough, global_ok, global_tf] = globalAlign(scan, scan_feat, ref, ref_feat, cfg.voxel);
     std::cout << "  Global converged : " << std::boolalpha << global_ok << "\n";
 
-    // 6. ICP fine alignment
-    std::cout << "ICP fine alignment...\n";
-    pcl::IterativeClosestPoint<PointT, PointT> icp;
-    icp.setInputSource(global_ok ? rough : scan);
-    icp.setInputTarget(ref);
+    // 6. Point-to-plane ICP fine alignment
+    // ── Why point-to-plane instead of point-to-point? ───────────────────────────
+    // Point-to-point ICP minimises Σ‖pᵢ − qᵢ‖².  On flat surfaces this is
+    // ill-conditioned: sliding the cloud along the plane barely changes the
+    // cost, so the solver converges slowly and the final pose is imprecise.
+    //
+    // Point-to-plane ICP minimises Σ(nᵢ · (pᵢ − qᵢ))², where nᵢ is the surface
+    // normal at target point qᵢ.  Displacement perpendicular to any normal is
+    // heavily penalised; with normals in diverse directions (flat face,
+    // cylinder wall, boss top) the system is well-conditioned and converges
+    // ~3–5× faster with better final accuracy.
+    //
+    // PCL's IterativeClosestPointWithNormals sets TransformationEstimation-
+    // PointToPlane automatically — all we need to do is supply PointNormal
+    // clouds instead of PointXYZ.
+    // ────────────────────────────────────────────────────────────────────────────
+    //
+    // scan_normals were computed on the original unaligned scan.  After global
+    // alignment the cloud has rotated, so its normals now point in the wrong
+    // directions.  We apply the rotation block of global_tf to correct them.
+    // Normals are direction vectors: they transform under the rotation only
+    // (no translation component; use R*n, not the full homogeneous T*n).
+    const Eigen::Matrix3f R_global =
+        (global_ok ? global_tf : Eigen::Matrix4f::Identity()).block<3, 3>(0, 0);
+    auto rough_normals = pcl::PointCloud<pcl::Normal>::Ptr(
+        new pcl::PointCloud<pcl::Normal>(*scan_normals));
+    for (auto& n : rough_normals->points) {
+        Eigen::Vector3f nv(n.normal_x, n.normal_y, n.normal_z);
+        nv = R_global * nv;
+        n.normal_x = nv.x(); n.normal_y = nv.y(); n.normal_z = nv.z();
+    }
+
+    auto source_nt = mergeWithNormals(global_ok ? rough : scan, rough_normals);
+    auto target_nt = mergeWithNormals(ref, ref_normals);
+
+    std::cout << "ICP fine alignment (point-to-plane)...\n";
+    pcl::IterativeClosestPointWithNormals<PointNT, PointNT> icp;
+    icp.setInputSource(source_nt);
+    icp.setInputTarget(target_nt);
     icp.setMaxCorrespondenceDistance(cfg.voxel * 3.0f);
     icp.setMaximumIterations(200);
     icp.setTransformationEpsilon(1e-9);
     icp.setEuclideanFitnessEpsilon(1e-9);
 
-    auto aligned = CloudT::Ptr(new CloudT());
-    icp.align(*aligned);
+    auto aligned_nt = CloudNT::Ptr(new CloudNT());
+    icp.align(*aligned_nt);
     std::cout << "  ICP converged    : " << icp.hasConverged() << "\n";
     std::cout << "  ICP fitness score: " << std::scientific
-              << icp.getFitnessScore() << "  m²\n";
+              << icp.getFitnessScore() << "  m\u00b2\n";
     std::cout << "  ICP RMSE         : " << std::fixed
               << std::sqrt(icp.getFitnessScore()) * 1000 << " mm\n";
+
+    // Extract XYZ-only cloud for deviation analysis.
+    // pcl::copyPointCloud copies only the fields present in the destination
+    // type (PointXYZ here), so the normal fields are silently dropped.
+    auto aligned = CloudT::Ptr(new CloudT());
+    pcl::copyPointCloud(*aligned_nt, *aligned);
 
     // 7–8. Deviation + colour coding
     std::cout << "Computing deviations...\n";
@@ -349,7 +438,15 @@ int main(int argc, char** argv) {
         aligned, ref, ref_normals, cfg.tolerance);
 
     // 9. Report
-    printReport(deviations, cfg.tolerance);
+    printReport(deviations, cfg.tolerance, cfg.pass_thresh);
+
+    // Optionally save the coloured deviation map to disk.
+    // This allows post-processing in tools like CloudCompare without needing
+    // the PCL visualizer (useful on headless build servers or CI pipelines).
+    if (!cfg.output.empty()) {
+        pcl::io::savePCDFileBinary(cfg.output, *coloured);
+        std::cout << "Deviation map saved \u2192 " << cfg.output << "\n";
+    }
 
     // Visualise
     if (!canLaunchViewer()) {
