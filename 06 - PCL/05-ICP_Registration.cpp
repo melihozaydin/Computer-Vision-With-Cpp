@@ -3,6 +3,7 @@
 #include <pcl/registration/icp.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     // Create source cloud (original)
@@ -59,7 +60,7 @@ int main() {
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "target");
 
         viewer.addCoordinateSystem(0.1, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Red = source, Green = aligned (after ICP), Blue = target. Press 'q' to quit." << std::endl;
         

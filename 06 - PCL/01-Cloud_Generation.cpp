@@ -3,6 +3,7 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     // Generate a synthetic wavy line cloud
@@ -29,7 +30,7 @@ int main() {
         viewer.addPointCloud<pcl::PointXYZ>(cloud, "cloud");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "cloud");
         viewer.addCoordinateSystem(0.2, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Showing generated wavy line cloud. Press 'q' to quit." << std::endl;
         

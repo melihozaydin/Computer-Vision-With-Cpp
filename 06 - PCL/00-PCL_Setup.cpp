@@ -3,6 +3,7 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     std::cout << "PCL version: " << PCL_VERSION_PRETTY << std::endl;
@@ -22,7 +23,7 @@ int main() {
         viewer.addPointCloud<pcl::PointXYZ>(cloud, "cloud");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "cloud");
         viewer.addCoordinateSystem(0.5, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Visualizer opened. Rotate with mouse, press 'q' to quit." << std::endl;
         

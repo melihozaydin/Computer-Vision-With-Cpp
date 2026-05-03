@@ -8,6 +8,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <set>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     // Create synthetic data: a plane (XY at Z=0) plus some outlier points
@@ -70,7 +71,7 @@ int main() {
         }
 
         viewer.addCoordinateSystem(0.1, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Green = plane (inliers), Red = outliers. Press 'q' to quit." << std::endl;
         

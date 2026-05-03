@@ -3,6 +3,7 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     // Generate a dense 3D grid cloud
@@ -39,7 +40,7 @@ int main() {
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "filtered");
 
         viewer.addCoordinateSystem(0.1, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Red = original (dense), Blue = downsampled. Press 'q' to quit." << std::endl;
         

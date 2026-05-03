@@ -4,6 +4,7 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
+#include "pcl_viewer_utils.h"
 
 int main() {
     // Generate a flat surface (XY plane with slight Z variation)
@@ -43,7 +44,7 @@ int main() {
         viewer.addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(cloud, normals, 5, 0.02, "normals");
 
         viewer.addCoordinateSystem(0.1, "axes", 0);
-        viewer.initCameraParameters();
+        setupInitialView(viewer);
         
         std::cout << "Green points = cloud, Cyan lines = normals (every 5th). Press 'q' to quit." << std::endl;
         
