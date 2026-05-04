@@ -1,19 +1,17 @@
 # =============================================================================
-# ADIF — Automated Dimensional Inspection Framework
+# ADIF_GUI — Interactive Dimensional Inspection GUI
 # =============================================================================
 # Targets:
-#   all            — build both binaries
-#   generate_data  — build the data generator
-#   adif           — build the inspection pipeline
-#   generate       — generate data/reference_part.pcd + data/scanned_part.pcd
-#   clean          — remove build artefacts
+#   all          — build adif_gui binary
+#   clean        — remove build artefacts
 #
 # Usage:
-#   make generate      # creates data/ PCD files
-#   make adif
-#   .build/adif data/reference_part.pcd data/scanned_part.pcd --tolerance 0.001
+#   make
+#   .build/adif_gui <scan.pcd> [<reference.pcd>]
 #
-# Note: the interactive GUI lives in ../ADIF_GUI/
+# Quick start (reuse ADIF synthetic data):
+#   cd ../ADIF && make generate && cd ../ADIF_GUI && make
+#   .build/adif_gui ../ADIF/data/scanned_part.pcd ../ADIF/data/reference_part.pcd
 # =============================================================================
 
 CXX ?= g++
@@ -26,17 +24,14 @@ VTK_LIBS ?= \
 
 PCL_MODULES ?= $(shell \
   if pkg-config --exists pcl_common; then \
-    echo "pcl_common pcl_io pcl_filters pcl_features pcl_segmentation \
-          pcl_registration pcl_kdtree pcl_search pcl_sample_consensus \
+    echo "pcl_common pcl_io pcl_filters pcl_features pcl_kdtree pcl_search \
           pcl_visualization"; \
   elif pkg-config --exists pcl_common-1.13; then \
     echo "pcl_common-1.13 pcl_io-1.13 pcl_filters-1.13 pcl_features-1.13 \
-          pcl_segmentation-1.13 pcl_registration-1.13 pcl_kdtree-1.13 \
-          pcl_search-1.13 pcl_sample_consensus-1.13 pcl_visualization-1.13"; \
+          pcl_kdtree-1.13 pcl_search-1.13 pcl_visualization-1.13"; \
   elif pkg-config --exists pcl_common-1.12; then \
     echo "pcl_common-1.12 pcl_io-1.12 pcl_filters-1.12 pcl_features-1.12 \
-          pcl_segmentation-1.12 pcl_registration-1.12 pcl_kdtree-1.12 \
-          pcl_search-1.12 pcl_sample_consensus-1.12 pcl_visualization-1.12"; \
+          pcl_kdtree-1.12 pcl_search-1.12 pcl_visualization-1.12"; \
   else \
     echo "pcl_common"; \
   fi)
@@ -56,23 +51,15 @@ LDFLAGS += \
 
 BUILD_DIR := .build
 
-all: $(BUILD_DIR) $(BUILD_DIR)/generate_data $(BUILD_DIR)/adif
+all: $(BUILD_DIR) $(BUILD_DIR)/adif_gui
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/generate_data: generate_data.cpp | $(BUILD_DIR)
+$(BUILD_DIR)/adif_gui: adif_gui.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
-
-$(BUILD_DIR)/adif: main.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
-
-# Convenience: build + run the data generator
-generate: $(BUILD_DIR)/generate_data
-	mkdir -p data
-	$(BUILD_DIR)/generate_data
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all clean generate
+.PHONY: all clean
