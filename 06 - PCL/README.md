@@ -25,6 +25,12 @@ These examples focus on the four pillars behind a real inspection system:
 | `03-Normal_Estimation.cpp` | Normals + KD-tree reasoning | Estimates normals on a sphere where the correct answer is known analytically, compares different neighbourhood sizes, and explains why normals matter for ICP, FPFH, and signed deviation. |
 | `04-Plane_Segmentation.cpp` | Fixture removal | Uses iterative **RANSAC plane segmentation** with `ExtractIndices` to strip a dominant floor plane and isolate the actual part cloud. |
 | `05-ICP_Registration.cpp` | Local registration | Loads the clouds from `01-Cloud_Generation.cpp`, runs ICP, prints the recovered $4 \times 4$ transform, and compares it with known ground truth. |
+| `06-Timing_And_Profiling.cpp` | Profiling fundamentals | Adds deterministic stage timers and throughput reporting so latency is measured, not guessed. |
+| `07-Latency_Budget_PassFail.cpp` | Real-time decision logic | Converts per-stage timings into latency PASS/FAIL against a target (default 120 ms/frame). |
+| `08-OMP_Parallel_Benchmarks.cpp` | Parallel acceleration | Benchmarks serial vs parallel heavy loops (OpenMP when available, safe fallback otherwise). |
+| `09-Region_Metrology_Primitives.cpp` | Region-based outputs | Isolates flatness, height, diameter, and position measurements on deterministic synthetic geometry. |
+| `10-Uncertainty_And_Outlier_Diagnostics.cpp` | Confidence + uncertainty | Computes residual distribution stats (mean/std/median/MAD), inlier/outlier ratios, confidence score, and warnings. |
+| `11-Reporting_JSON_CSV.cpp` | Production-style export | Shows lightweight JSON + CSV report serialization for downstream quality dashboards. |
 
 ## Inspection pipeline at a glance
 
@@ -68,7 +74,7 @@ It demonstrates the full inspection story instead of stopping at pretty alignmen
 | File | Purpose |
 |---|---|
 | `ADIF/generate_data.cpp` | Generates a reference part and a manufactured/scanned part with noise, pose error, and a dent defect. |
-| `ADIF/main.cpp` | Full inspection pipeline: load → preprocess → normals → FPFH → global registration → ICP → signed deviation → colour-coded pass/fail visualisation. |
+| `ADIF/main.cpp` | Full capstone pipeline: load → preprocess → normals → FPFH → global registration → point-to-plane ICP → signed deviation → residual diagnostics → region metrology → geometric/latency decision. |
 | `ADIF/Makefile` | Builds the data generator and inspection executable. |
 
 ### ADIF capabilities
@@ -77,8 +83,12 @@ It demonstrates the full inspection story instead of stopping at pretty alignmen
 - Applies **PassThrough** cropping and **VoxelGrid** downsampling
 - Estimates normals with parallel normal estimation
 - Performs **global registration** using **FPFH + SampleConsensusPrerejective**
-- Performs **local registration** using **ICP**
+- Performs **local registration** using **point-to-plane ICP**
 - Computes nearest-neighbour deviation using a **KD-tree**
+- Optional per-stage profiling mode via `--profile`
+- Latency target tracking via `--latency-target-ms` with latency PASS/FAIL
+- Adjustable geometric acceptance via `--pass-threshold`
+- Optional deviation-map export via `--output <path.pcd>`
 - Produces a colour-coded inspection result:
   - **Green** = within tolerance
   - **Red** = oversized / proud material
@@ -88,7 +98,10 @@ It demonstrates the full inspection story instead of stopping at pretty alignmen
   - RMSE
   - max absolute deviation
   - percentage within tolerance
-  - PASS / FAIL decision
+	- residual diagnostics (mean/std/median/MAD, inlier/outlier ratio)
+	- confidence score and warning flags
+	- region metrology section (flatness, height, diameter, position)
+	- geometric + latency + overall PASS / FAIL decision
 
 ## Quick start
 
@@ -106,6 +119,13 @@ Build only:
 ```bash
 cd "06 - PCL"
 ./run_all_examples.sh --build-only
+```
+
+On Windows PowerShell, use the wrapper that delegates to WSL:
+
+```powershell
+cd "06 - PCL"
+.\run_all_examples.ps1
 ```
 
 ### Build manually
@@ -152,6 +172,42 @@ You can also change voxel size:
 .build/adif data/reference_part.pcd data/scanned_part.pcd --tolerance 0.0005 --voxel 0.0015
 ```
 
+Profile the capstone and enforce a latency target:
+
+```bash
+.build/adif data/reference_part.pcd data/scanned_part.pcd \
+	--tolerance 0.001 \
+	--latency-target-ms 120 \
+	--profile
+```
+
+Adjust the geometric pass threshold and save the coloured deviation cloud:
+
+```bash
+.build/adif data/reference_part.pcd data/scanned_part.pcd \
+	--tolerance 0.001 \
+	--pass-threshold 97 \
+	--output data/deviation_map.pcd
+```
+
+### What `--profile` adds
+
+Profiling mode prints per-stage timings for the capstone pipeline, including:
+
+- load
+- preprocess
+- normals (parallel ref + scan)
+- FPFH (parallel ref + scan)
+- global alignment
+- ICP fine alignment
+- deviation map
+- metrology + diagnostics
+
+That lets you reason about both:
+
+- **geometry quality** — did the part meet tolerance?
+- **real-time suitability** — did the pipeline stay under the latency budget?
+
 ## Recommended learning order
 
 If your goal is industrial inspection rather than generic point-cloud graphics, go in this order:
@@ -161,7 +217,13 @@ If your goal is industrial inspection rather than generic point-cloud graphics, 
 3. `04-Plane_Segmentation.cpp` — isolate the part from the environment
 4. `03-Normal_Estimation.cpp` — learn why KD-tree neighbourhoods matter
 5. `05-ICP_Registration.cpp` — understand local alignment limitations
-6. `ADIF/main.cpp` — study the complete inspection workflow
+6. `06-Timing_And_Profiling.cpp` — instrument stage-level timing
+7. `07-Latency_Budget_PassFail.cpp` — define real-time PASS/FAIL rules
+8. `08-OMP_Parallel_Benchmarks.cpp` — quantify speed-up on your hardware
+9. `09-Region_Metrology_Primitives.cpp` — isolate metrology primitives
+10. `10-Uncertainty_And_Outlier_Diagnostics.cpp` — confidence & outlier logic
+11. `11-Reporting_JSON_CSV.cpp` — export audit-ready reports
+12. `ADIF/main.cpp` — capstone composition of all prior concepts
 
 Yes, `03` comes after `04` in this reading order. That is intentional: in inspection, cleaning and isolating the part usually matters before fancier local geometry work.
 
@@ -248,9 +310,9 @@ The runtime image is `cv-pcl-runtime:22.04`.
 
 If you want to push this folder further toward production-style metrology, the next useful upgrades would be:
 
-- point-to-plane ICP
+- direct JSON/CSV export from `ADIF/main.cpp` (the isolated lesson already exists)
 - mesh-to-cloud deviation instead of cloud-to-cloud nearest point
-- region-of-interest inspection masks
-- CSV/PDF export of defect statistics
+- region-of-interest inspection masks and per-feature gating
+- per-feature tolerance bands instead of one global threshold
 - live scanner input instead of synthetic `.pcd` generation
-- tolerance bands per feature instead of one global threshold
+- historical trend logging across batches of inspected parts
